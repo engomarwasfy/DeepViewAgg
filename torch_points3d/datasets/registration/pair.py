@@ -31,7 +31,7 @@ class Pair(Data):
         for key in data_source.keys:
             batch[key] = data_source[key]
         for key_target in data_target.keys:
-            batch[key_target+"_target"] = data_target[key_target]
+            batch[f"{key_target}_target"] = data_target[key_target]
         if(batch.x is None):
             batch["x_target"] = None
         return batch.contiguous()
@@ -202,7 +202,7 @@ class DensePairBatch(Pair):
         for key in keys:
             batch[key] = []
 
-        for _, data in enumerate(data_list):
+        for data in data_list:
             for key in data.keys:
                 item = data[key]
                 batch[key].append(item)

@@ -75,7 +75,7 @@ class SemanticKitti(Dataset):
                 os.path.join(self.processed_paths[1], "*.pt")
             )
         else:
-            raise ValueError("Split %s not recognised" % split)
+            raise ValueError(f"Split {split} not recognised")
 
     @property
     def raw_file_names(self):
@@ -83,7 +83,7 @@ class SemanticKitti(Dataset):
 
     @property
     def processed_file_names(self):
-        return [s for s in self.AVAILABLE_SPLITS[:-1]]
+        return list(self.AVAILABLE_SPLITS[:-1])
 
     def _load_paths(self, seqs):
         scan_paths = []
@@ -96,9 +96,9 @@ class SemanticKitti(Dataset):
                 sorted(glob(os.path.join(self.raw_paths[0], "{0:02d}".format(int(seq)), "labels", "*.label")))
             )
 
-        if len(label_path) == 0:
-            label_path = [None for i in range(len(scan_paths))]
-        if len(label_path) > 0 and len(scan_paths) != len(label_path):
+        if not label_path:
+            label_path = [None for _ in range(len(scan_paths))]
+        if label_path and len(scan_paths) != len(label_path):
             raise ValueError((f"number of scans {len(scan_paths)} not equal to number of labels {len(label_path)}"))
 
         return scan_paths, label_path
@@ -142,10 +142,20 @@ class SemanticKitti(Dataset):
             for scan in scan_paths:
                 scan = os.path.splitext(scan)[0]
                 seq, _, scan_id = scan.split(os.path.sep)[-3:]
-                scan_names.append("{}_{}".format(seq, scan_id))
+                scan_names.append(f"{seq}_{scan_id}")
 
-            out_files = [os.path.join(self.processed_paths[i], "{}.pt".format(scan_name)) for scan_name in scan_names]
-            args = zip(scan_paths, label_paths, [self.pre_transform for i in range(len(scan_paths))], out_files)
+            out_files = [
+                os.path.join(self.processed_paths[i], f"{scan_name}.pt")
+                for scan_name in scan_names
+            ]
+
+            args = zip(
+                scan_paths,
+                label_paths,
+                [self.pre_transform for _ in range(len(scan_paths))],
+                out_files,
+            )
+
             if self.use_multiprocessing:
                 with multiprocessing.Pool(processes=self.process_workers) as pool:
                     pool.starmap(self.process_one, args)
@@ -211,7 +221,7 @@ class SemanticKittiDataset(BaseDataset):
 
     def __init__(self, dataset_opt):
         super().__init__(dataset_opt)
-        process_workers: int = dataset_opt.process_workers if dataset_opt.process_workers else 0
+        process_workers: int = dataset_opt.process_workers or 0
         self.train_dataset = SemanticKitti(
             self._data_path,
             split="train",

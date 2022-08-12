@@ -10,8 +10,9 @@ _custom_losses = sys.modules["torch_points3d.core.losses.losses"]
 _torch_metric_learning_losses = sys.modules["pytorch_metric_learning.losses"]
 _torch_metric_learning_miners = sys.modules["pytorch_metric_learning.miners"]
 _intersection = set(_custom_losses.__dict__) & set(_torch_metric_learning_losses.__dict__)
-_intersection = set([module for module in _intersection if not module.startswith("_")])
-if _intersection:
+if _intersection := {
+    module for module in _intersection if not module.startswith("_")
+}:
     raise Exception(
         "It seems that you are overiding a transform from pytorch metric learning, \
             this is forbiden, please rename your classes {}".format(
@@ -43,19 +44,17 @@ def instantiate_loss_or_miner(option, mode="loss"):
         cls = getattr(_custom_losses, class_, None)
         if not cls:
             cls = getattr(_torch_metric_learning_losses, class_, None)
-            if not cls:
-                raise ValueError("loss %s is nowhere to be found" % class_)
+        if not cls:
+            raise ValueError(f"loss {class_} is nowhere to be found")
     elif mode == "miner":
         cls = getattr(_torch_metric_learning_miners, class_, None)
         if not cls:
-            raise ValueError("miner %s is nowhere to be found" % class_)
+            raise ValueError(f"miner {class_} is nowhere to be found")
     else:
-        raise NotImplementedError("Cannot instantiate this mode {}".format(mode))
+        raise NotImplementedError(f"Cannot instantiate this mode {mode}")
 
     if params and lparams:
         return cls(*lparams, **params)
     if params:
         return cls(**params)
-    if lparams:
-        return cls(*params)
-    return cls()
+    return cls(*params) if lparams else cls()

@@ -27,5 +27,5 @@ class BalancedRandomSampler(Sampler):
         return self.num_samples
 
     def __repr__(self):
-        return "{}(num_samples={})".format(self.__class__.__name__, self.num_samples)
+        return f"{self.__class__.__name__}(num_samples={self.num_samples})"
 

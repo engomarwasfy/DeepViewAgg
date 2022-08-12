@@ -168,7 +168,7 @@ class Patch3DMatch(Base3DMatch):
     def __len__(self):
         size_dataset = len(os.listdir(self.path_data))
         if self.is_offline:
-            size_dataset = size_dataset // 2
+            size_dataset //= 2
         return size_dataset
 
 

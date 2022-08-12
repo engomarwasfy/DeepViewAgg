@@ -21,7 +21,7 @@ class BaseNeighbourFinder(ABC):
         pass
 
     def __repr__(self):
-        return str(self.__class__.__name__) + " " + str(self.__dict__)
+        return f"{str(self.__class__.__name__)} {str(self.__dict__)}"
 
 
 class RadiusNeighbourFinder(BaseNeighbourFinder):
@@ -109,10 +109,7 @@ class FAISSGPUKNNNeighbourFinder(BaseNeighbourFinder):
         if ncells is None:
             f1 = 3.5 * np.sqrt(n_fit)
             f2 = 1.6 * np.sqrt(n_fit)
-            if n_fit > 2 * 10 ** 6:
-                p = 1 / (1 + np.exp(2 * 10 ** 6 - n_fit))
-            else:
-                p = 0
+            p = 1 / (1 + np.exp(2 * 10 ** 6 - n_fit)) if n_fit > 2 * 10 ** 6 else 0
             ncells = int(p * f1 + (1 - p) * f2)
 
         # Building a GPU IVFFlat index + Flat quantizer
@@ -194,13 +191,13 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
         if not is_list(max_num_neighbors) and is_list(radius):
             self._radius = cast(list, radius)
             max_num_neighbors = cast(int, max_num_neighbors)
-            self._max_num_neighbors = [max_num_neighbors for i in range(len(self._radius))]
+            self._max_num_neighbors = [max_num_neighbors for _ in range(len(self._radius))]
             return
 
         if not is_list(radius) and is_list(max_num_neighbors):
             self._max_num_neighbors = cast(list, max_num_neighbors)
             radius = cast(int, radius)
-            self._radius = [radius for i in range(len(self._max_num_neighbors))]
+            self._radius = [radius for _ in range(len(self._max_num_neighbors))]
             return
 
         if is_list(max_num_neighbors):
@@ -219,10 +216,14 @@ class MultiscaleRadiusNeighbourFinder(BaseMSNeighbourFinder):
         if scale_idx >= self.num_scales:
             raise ValueError("Scale %i is out of bounds %i" % (scale_idx, self.num_scales))
 
-        radius_idx = radius(
-            x, y, self._radius[scale_idx], batch_x, batch_y, max_num_neighbors=self._max_num_neighbors[scale_idx]
+        return radius(
+            x,
+            y,
+            self._radius[scale_idx],
+            batch_x,
+            batch_y,
+            max_num_neighbors=self._max_num_neighbors[scale_idx],
         )
-        return radius_idx
 
     @property
     def num_scales(self):

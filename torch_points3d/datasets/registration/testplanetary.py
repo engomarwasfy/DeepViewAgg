@@ -66,28 +66,28 @@ class TestPairPlanetary(BasePCRBTest):
     def download(self):
         folder = osp.join(self.raw_dir, "test")
         if files_exist([folder]):  # pragma: no cover
-            log.warning("already downloaded {}".format("test"))
+            log.warning('already downloaded test')
             return
         else:
             makedirs(folder)
         ftp = FTP('asrl3.utias.utoronto.ca')
         ftp.login()
-        log.info("Download elements in the file {}...".format(folder))
+        log.info(f"Download elements in the file {folder}...")
         for name, url in self.DATASETS:
-            zip_file = osp.join(folder, name+'.zip')
-            log.info("Downloading dataset %s" % name)
-            ftp.retrbinary('RETR '+url, open(zip_file, 'wb').write)
+            zip_file = osp.join(folder, f'{name}.zip')
+            log.info(f"Downloading dataset {name}")
+            ftp.retrbinary(f'RETR {url}', open(zip_file, 'wb').write)
             with ZipFile(zip_file, 'r') as zip_obj:
-                log.info("Extracting dataset %s" % name)
+                log.info(f"Extracting dataset {name}")
                 zip_obj.extractall(folder)
             with os.scandir(osp.join(folder, name)) as directory:
-                log.info("Configuring dataset %s" % name)
+                log.info(f"Configuring dataset {name}")
                 for entry in directory:
                     if entry.is_dir():
-                        base_path = entry.path+"/"+entry.name
-                        file_name = base_path+".xyz"
-                        ground_truth_name = base_path+".gt"
-                        pcd_file_name = entry.path+".pcd"
+                        base_path = f"{entry.path}/{entry.name}"
+                        file_name = f"{base_path}.xyz"
+                        ground_truth_name = f"{base_path}.gt"
+                        pcd_file_name = f"{entry.path}.pcd"
                         pcd = open3d.io.read_point_cloud(file_name, format="xyz",remove_nan_points=True, remove_infinite_points=True, print_progress=False)
                         ground_truth = numpy.loadtxt(ground_truth_name)
                         pcd.transform(ground_truth)
@@ -95,7 +95,12 @@ class TestPairPlanetary(BasePCRBTest):
                         shutil.rmtree(entry.path)
             os.remove(zip_file)
 
-        gdown.download("https://drive.google.com/uc?id=1marTTFGjlDTb-MLj7pm5zV1u-0IS-xFc", folder+"/p2at_met/box_map.pcd", quiet=True)
+        gdown.download(
+            "https://drive.google.com/uc?id=1marTTFGjlDTb-MLj7pm5zV1u-0IS-xFc",
+            f"{folder}/p2at_met/box_map.pcd",
+            quiet=True,
+        )
+
         self.download_pairs(folder)
 
     def process(self):

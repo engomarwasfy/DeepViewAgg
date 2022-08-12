@@ -47,7 +47,7 @@ class RemoveAttributes(object):
         keys = set(data.keys)
         for attr_name in self._attr_names:
             if attr_name not in keys and self._strict:
-                raise Exception("attr_name: {} isn t within keys: {}".format(attr_name, keys))
+                raise Exception(f"attr_name: {attr_name} isn t within keys: {keys}")
         for attr_name in self._attr_names:
             delattr(data, attr_name)
         return data
@@ -60,7 +60,7 @@ class RemoveAttributes(object):
         return data
 
     def __repr__(self):
-        return "{}(attr_names={}, strict={})".format(self.__class__.__name__, self._attr_names, self._strict)
+        return f"{self.__class__.__name__}(attr_names={self._attr_names}, strict={self._strict})"
 
 
 class PointCloudFusion(object):
@@ -81,7 +81,7 @@ class PointCloudFusion(object):
         return data
 
     def __call__(self, data_list: List[Data]):
-        if len(data_list) == 0:
+        if not data_list:
             raise Exception("A list of data should be provided")
         elif len(data_list) == 1:
             return data_list[0]
@@ -93,7 +93,7 @@ class PointCloudFusion(object):
         return data
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}()"
 
 
 class GridSphereSampling(object):
@@ -117,15 +117,16 @@ class GridSphereSampling(object):
     def __init__(self, radius, grid_size=None, delattr_kd_tree=True, center=True):
         self._radius = eval(radius) if isinstance(radius, str) else float(radius)
         grid_size = eval(grid_size) if isinstance(grid_size, str) else float(grid_size)
-        self._grid_sampling = GridSampling3D(size=grid_size if grid_size else self._radius)
+        self._grid_sampling = GridSampling3D(size=grid_size or self._radius)
         self._delattr_kd_tree = delattr_kd_tree
         self._center = center
 
     def _process(self, data):
-        if not hasattr(data, self.KDTREE_KEY):
-            tree = KDTree(np.asarray(data.pos), leaf_size=50)
-        else:
-            tree = getattr(data, self.KDTREE_KEY)
+        tree = (
+            getattr(data, self.KDTREE_KEY)
+            if hasattr(data, self.KDTREE_KEY)
+            else KDTree(np.asarray(data.pos), leaf_size=50)
+        )
 
         # The kdtree has bee attached to data for optimization reason.
         # However, it won't be used for down the transform pipeline and should be removed before any collate func call.
@@ -161,7 +162,7 @@ class GridSphereSampling(object):
         return data
 
     def __repr__(self):
-        return "{}(radius={}, center={})".format(self.__class__.__name__, self._radius, self._center)
+        return f"{self.__class__.__name__}(radius={self._radius}, center={self._center})"
 
 
 class GridCylinderSampling(object):
@@ -185,15 +186,16 @@ class GridCylinderSampling(object):
     def __init__(self, radius, grid_size=None, delattr_kd_tree=True, center=True):
         self._radius = eval(radius) if isinstance(radius, str) else float(radius)
         grid_size = eval(grid_size) if isinstance(grid_size, str) else float(grid_size)
-        self._grid_sampling = GridSampling3D(size=grid_size if grid_size else self._radius)
+        self._grid_sampling = GridSampling3D(size=grid_size or self._radius)
         self._delattr_kd_tree = delattr_kd_tree
         self._center = center
 
     def _process(self, data):
-        if not hasattr(data, self.KDTREE_KEY):
-            tree = KDTree(np.asarray(data.pos[:, :-1]), leaf_size=50)
-        else:
-            tree = getattr(data, self.KDTREE_KEY)
+        tree = (
+            getattr(data, self.KDTREE_KEY)
+            if hasattr(data, self.KDTREE_KEY)
+            else KDTree(np.asarray(data.pos[:, :-1]), leaf_size=50)
+        )
 
         # The kdtree has bee attached to data for optimization reason.
         # However, it won't be used for down the transform pipeline and should be removed before any collate func call.
@@ -229,7 +231,7 @@ class GridCylinderSampling(object):
         return data
 
     def __repr__(self):
-        return "{}(radius={}, center={})".format(self.__class__.__name__, self._radius, self._center)
+        return f"{self.__class__.__name__}(radius={self._radius}, center={self._center})"
 
 
 class ComputeKDTree(object):
@@ -256,7 +258,7 @@ class ComputeKDTree(object):
         return data
 
     def __repr__(self):
-        return "{}(leaf_size={})".format(self.__class__.__name__, self._leaf_size)
+        return f"{self.__class__.__name__}(leaf_size={self._leaf_size})"
 
 
 class RandomSphere(object):
@@ -293,9 +295,7 @@ class RandomSphere(object):
         return data
 
     def __repr__(self):
-        return "{}(radius={}, center={}, sampling_strategy={})".format(
-            self.__class__.__name__, self._radius, self._center, self._sampling_strategy
-        )
+        return f"{self.__class__.__name__}(radius={self._radius}, center={self._center}, sampling_strategy={self._sampling_strategy})"
 
 
 class SphereSampling:
@@ -345,9 +345,7 @@ class SphereSampling:
         return new_data
 
     def __repr__(self):
-        return "{}(radius={}, center={}, align_origin={})".format(
-            self.__class__.__name__, self._radius, self._centre, self._align_origin
-        )
+        return f"{self.__class__.__name__}(radius={self._radius}, center={self._centre}, align_origin={self._align_origin})"
 
 
 class CylinderSampling:
@@ -400,9 +398,7 @@ class CylinderSampling:
         return new_data
 
     def __repr__(self):
-        return "{}(radius={}, center={}, align_origin={})".format(
-            self.__class__.__name__, self._radius, self._centre, self._align_origin
-        )
+        return f"{self.__class__.__name__}(radius={self._radius}, center={self._centre}, align_origin={self._align_origin})"
 
 
 class Select:
@@ -457,7 +453,7 @@ class CylinderNormalizeScale(object):
         return data
 
     def __repr__(self):
-        return "{}(normalize_z={})".format(self.__class__.__name__, self._normalize_z)
+        return f"{self.__class__.__name__}(normalize_z={self._normalize_z})"
 
 
 class RandomSymmetry(object):
@@ -475,10 +471,9 @@ class RandomSymmetry(object):
     def __call__(self, data):
 
         for i, ax in enumerate(self.axis):
-            if ax:
-                if torch.rand(1) < 0.5:
-                    c_max = torch.max(data.pos[:, i])
-                    data.pos[:, i] = c_max - data.pos[:, i]
+            if ax and torch.rand(1) < 0.5:
+                c_max = torch.max(data.pos[:, i])
+                data.pos[:, i] = c_max - data.pos[:, i]
         return data
 
     def __repr__(self):
@@ -507,7 +502,7 @@ class RandomNoise(object):
         return data
 
     def __repr__(self):
-        return "{}(sigma={}, clip={})".format(self.__class__.__name__, self.sigma, self.clip)
+        return f"{self.__class__.__name__}(sigma={self.sigma}, clip={self.clip})"
 
 
 class ScalePos:
@@ -519,7 +514,7 @@ class ScalePos:
         return data
 
     def __repr__(self):
-        return "{}(scale={})".format(self.__class__.__name__, self.scale)
+        return f"{self.__class__.__name__}(scale={self.scale})"
 
 
 class RandomScaleAnisotropic:
@@ -560,7 +555,7 @@ class RandomScaleAnisotropic:
         return data
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.scales)
+        return f"{self.__class__.__name__}({self.scales})"
 
 
 class MeshToNormal(object):
@@ -581,7 +576,7 @@ class MeshToNormal(object):
         return data
 
     def __repr__(self):
-        return "{}".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}"
 
 
 class MultiScaleTransform(object):
@@ -601,10 +596,7 @@ class MultiScaleTransform(object):
     @staticmethod
     def __inc__wrapper(func, special_params):
         def new__inc__(key, num_nodes, special_params=None, func=None):
-            if key in special_params:
-                return special_params[key]
-            else:
-                return func(key, num_nodes)
+            return special_params[key] if key in special_params else func(key, num_nodes)
 
         return partial(new__inc__, special_params=special_params, func=func)
 
@@ -631,9 +623,7 @@ class MultiScaleTransform(object):
                     upsample_index += 1
                     pre_up = upsampler.precompute(query, support)
                     upsample.append(pre_up)
-                    special_params = {}
-                    special_params["x_idx"] = query.num_nodes
-                    special_params["y_idx"] = support.num_nodes
+                    special_params = {"x_idx": query.num_nodes, "y_idx": support.num_nodes}
                     setattr(pre_up, "__inc__", self.__inc__wrapper(pre_up.__inc__, special_params))
             else:
                 query = new_data
@@ -659,7 +649,7 @@ class MultiScaleTransform(object):
         return ms_data
 
     def __repr__(self):
-        return "{}".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}"
 
 
 class ShuffleData(object):
@@ -693,7 +683,7 @@ class PairTransform(object):
         return Pair.make_pair(data_source, data_target)
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}()"
 
 
 class ShiftVoxels:
@@ -720,7 +710,7 @@ class ShiftVoxels:
         return data
 
     def __repr__(self):
-        return "{}(apply_shift={})".format(self.__class__.__name__, self._apply_shift)
+        return f"{self.__class__.__name__}(apply_shift={self._apply_shift})"
 
 
 class RandomDropout:
@@ -745,9 +735,7 @@ class RandomDropout:
         return data
 
     def __repr__(self):
-        return "{}(dropout_ratio={}, dropout_application_ratio={})".format(
-            self.__class__.__name__, self.dropout_ratio, self.dropout_application_ratio
-        )
+        return f"{self.__class__.__name__}(dropout_ratio={self.dropout_ratio}, dropout_application_ratio={self.dropout_application_ratio})"
 
 
 def apply_mask(data, mask, skip_keys=[]):
@@ -826,9 +814,7 @@ class RandomWalkDropout(object):
         return data
 
     def __repr__(self):
-        return "{}(dropout_ratio={}, num_iter={}, radius={}, max_num={}, skip_keys={})".format(
-            self.__class__.__name__, self.dropout_ratio, self.num_iter, self.radius, self.max_num, self.skip_keys
-        )
+        return f"{self.__class__.__name__}(dropout_ratio={self.dropout_ratio}, num_iter={self.num_iter}, radius={self.radius}, max_num={self.max_num}, skip_keys={self.skip_keys})"
 
 
 class RandomSphereDropout(object):
@@ -867,7 +853,7 @@ class RandomSphereDropout(object):
         return data
 
     def __repr__(self):
-        return "{}(num_sphere={}, radius={})".format(self.__class__.__name__, self.num_sphere, self.radius)
+        return f"{self.__class__.__name__}(num_sphere={self.num_sphere}, radius={self.radius})"
 
 
 class FixedSphereDropout(object):
@@ -904,7 +890,7 @@ class FixedSphereDropout(object):
         return data
 
     def __repr__(self):
-        return "{}(centers={}, radius={})".format(self.__class__.__name__, self.centers, self.radius)
+        return f"{self.__class__.__name__}(centers={self.centers}, radius={self.radius})"
 
 
 class SphereCrop(object):
@@ -933,7 +919,7 @@ class SphereCrop(object):
         return data
 
     def __repr__(self):
-        return "{}(radius={})".format(self.__class__.__name__, self.radius)
+        return f"{self.__class__.__name__}(radius={self.radius})"
 
 
 class CubeCrop(object):
@@ -976,7 +962,7 @@ class CubeCrop(object):
         return data
 
     def __repr__(self):
-        return "{}(c={}, rotation={})".format(self.__class__.__name__, self.c, self.random_rotation)
+        return f"{self.__class__.__name__}(c={self.c}, rotation={self.random_rotation})"
 
 
 class EllipsoidCrop(object):
@@ -1008,8 +994,11 @@ class EllipsoidCrop(object):
         self.random_rotation = Random3AxisRotation(rot_x=rot_x, rot_y=rot_y, rot_z=rot_z)
 
     def _compute_mask(self, pos: torch.Tensor):
-        mask = (pos[:, 0] ** 2 / self._a2 + pos[:, 1] ** 2 / self._b2 + pos[:, 2] ** 2 / self._c2) < 1
-        return mask
+        return (
+            pos[:, 0] ** 2 / self._a2
+            + pos[:, 1] ** 2 / self._b2
+            + pos[:, 2] ** 2 / self._c2
+        ) < 1
 
     def __call__(self, data):
         data_temp = data.clone()
@@ -1022,9 +1011,7 @@ class EllipsoidCrop(object):
         return data
 
     def __repr__(self):
-        return "{}(a={}, b={}, c={}, rotation={})".format(
-            self.__class__.__name__, np.sqrt(self._a2), np.sqrt(self._b2), np.sqrt(self._c2), self.random_rotation
-        )
+        return f"{self.__class__.__name__}(a={np.sqrt(self._a2)}, b={np.sqrt(self._b2)}, c={np.sqrt(self._c2)}, rotation={self.random_rotation})"
 
 
 class DensityFilter(object):
@@ -1056,9 +1043,7 @@ class DensityFilter(object):
         return data
 
     def __repr__(self):
-        return "{}(radius_nn={}, min_num={}, skip_keys={})".format(
-            self.__class__.__name__, self.radius_nn, self.min_num, self.skip_keys
-        )
+        return f"{self.__class__.__name__}(radius_nn={self.radius_nn}, min_num={self.min_num}, skip_keys={self.skip_keys})"
 
 
 class IrregularSampling(object):
@@ -1089,7 +1074,7 @@ class IrregularSampling(object):
         return data
 
     def __repr__(self):
-        return "{}(d_half={}, p={}, skip_keys={})".format(self.__class__.__name__, self.d_half, self.p, self.skip_keys)
+        return f"{self.__class__.__name__}(d_half={self.d_half}, p={self.p}, skip_keys={self.skip_keys})"
 
 
 class PeriodicSampling(object):
@@ -1117,7 +1102,5 @@ class PeriodicSampling(object):
         return data
 
     def __repr__(self):
-        return "{}(pulse={}, thresh={}, box_mullti={}, skip_keys={})".format(
-            self.__class__.__name__, self.pulse, self.thresh, self.box_multiplier, self.skip_keys
-        )
+        return f"{self.__class__.__name__}(pulse={self.pulse}, thresh={self.thresh}, box_mullti={self.box_multiplier}, skip_keys={self.skip_keys})"
 

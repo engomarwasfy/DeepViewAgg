@@ -158,9 +158,7 @@ class GridSampling3D:
         return data
 
     def __repr__(self):
-        return "{}(grid_size={}, quantize_coords={}, mode={})".format(
-            self.__class__.__name__, self._grid_size, self._quantize_coords, self._mode
-        )
+        return f"{self.__class__.__name__}(grid_size={self._grid_size}, quantize_coords={self._quantize_coords}, mode={self._mode})"
 
 
 class SaveOriginalPosId:
@@ -244,13 +242,10 @@ class ElasticDistortion:
 
     def __call__(self, data):
         # coords = data.pos / self._spatial_resolution
-        if self._apply_distorsion:
-            if random.random() < 0.95:
-                for i in range(len(self._granularity)):
-                    data.pos = ElasticDistortion.elastic_distortion(data.pos, self._granularity[i], self._magnitude[i],)
+        if self._apply_distorsion and random.random() < 0.95:
+            for i in range(len(self._granularity)):
+                data.pos = ElasticDistortion.elastic_distortion(data.pos, self._granularity[i], self._magnitude[i],)
         return data
 
     def __repr__(self):
-        return "{}(apply_distorsion={}, granularity={}, magnitude={})".format(
-            self.__class__.__name__, self._apply_distorsion, self._granularity, self._magnitude,
-        )
+        return f"{self.__class__.__name__}(apply_distorsion={self._apply_distorsion}, granularity={self._granularity}, magnitude={self._magnitude})"

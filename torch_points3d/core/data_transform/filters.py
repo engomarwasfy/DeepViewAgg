@@ -28,10 +28,10 @@ class FCompose(object):
         return res
 
     def __repr__(self):
-        rep = "{}([".format(self.__class__.__name__)
+        rep = f"{self.__class__.__name__}(["
         for filt in self.list_filter:
             rep = rep + filt.__repr__() + ", "
-        rep = rep + "])"
+        rep = f"{rep}])"
         return rep
 
 
@@ -55,13 +55,10 @@ class PlanarityFilter(object):
         if getattr(data, "eigenvalues", None) is None:
             data = PCACompute()(data)
         planarity = compute_planarity(data.eigenvalues)
-        if self.is_leq:
-            return planarity <= self.thresh
-        else:
-            return planarity > self.thresh
+        return planarity <= self.thresh if self.is_leq else planarity > self.thresh
 
     def __repr__(self):
-        return "{}(thresh={}, is_leq={})".format(self.__class__.__name__, self.thresh, self.is_leq)
+        return f"{self.__class__.__name__}(thresh={self.thresh}, is_leq={self.is_leq})"
 
 
 class RandomFilter(object):
@@ -81,4 +78,4 @@ class RandomFilter(object):
         return random.random() < self.thresh
 
     def __repr__(self):
-        return "{}(thresh={})".format(self.__class__.__name__, self.thresh)
+        return f"{self.__class__.__name__}(thresh={self.thresh})"

@@ -65,7 +65,7 @@ class SampledModelNet(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        return ["training_{}.pt".format(self.name), "test_{}.pt".format(self.name)]
+        return [f"training_{self.name}.pt", f"test_{self.name}.pt"]
 
     def download(self):
         path = download_url(self.url, self.root)
@@ -80,17 +80,17 @@ class SampledModelNet(InMemoryDataset):
         torch.save(self.process_set("test"), self.processed_paths[1])
 
     def process_set(self, dataset):
-        with open(osp.join(self.raw_dir, "modelnet{}_shape_names.txt".format(self.name)), "r") as f:
+        with open(osp.join(self.raw_dir, f"modelnet{self.name}_shape_names.txt"), "r") as f:
             categories = f.read().splitlines()
             categories = sorted(categories)
-        with open(osp.join(self.raw_dir, "modelnet{}_{}.txt".format(self.name, dataset)), "r") as f:
+        with open(osp.join(self.raw_dir, f"modelnet{self.name}_{dataset}.txt"), "r") as f:
             split_objects = f.read().splitlines()
 
         data_list = []
         for target, category in enumerate(categories):
             folder = osp.join(self.raw_dir, category)
             category_ojects = filter(lambda o: category in o, split_objects)
-            paths = ["{}/{}.txt".format(folder, o.strip()) for o in category_ojects]
+            paths = [f"{folder}/{o.strip()}.txt" for o in category_ojects]
             for path in paths:
                 raw = read_txt_array(path, sep=",")
                 data = Data(pos=raw[:, :3], norm=raw[:, 3:], y=torch.tensor([target]))
@@ -105,7 +105,7 @@ class SampledModelNet(InMemoryDataset):
         return self.collate(data_list)
 
     def __repr__(self):
-        return "{}{}({})".format(self.__class__.__name__, self.name, len(self))
+        return f"{self.__class__.__name__}{self.name}({len(self)})"
 
 
 class ModelNetDataset(BaseDataset):

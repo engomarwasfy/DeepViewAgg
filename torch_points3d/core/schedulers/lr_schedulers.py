@@ -82,7 +82,7 @@ class ExpLR(LambdaStepLR):
 
 
 def repr(self, scheduler_params={}):
-    return "{}({})".format(self.__class__.__name__, scheduler_params)
+    return f"{self.__class__.__name__}({scheduler_params})"
 
 
 class LRScheduler:
@@ -100,9 +100,7 @@ class LRScheduler:
         return self._scheduler._scheduler_opt
 
     def __repr__(self):
-        return "{}({}, update_scheduler_on={})".format(
-            self._scheduler.__class__.__name__, self._scheduler_params, self._update_scheduler_on
-        )
+        return f"{self._scheduler.__class__.__name__}({self._scheduler_params}, update_scheduler_on={self._update_scheduler_on})"
 
     def step(self, *args, **kwargs):
         self._scheduler.step(*args, **kwargs)

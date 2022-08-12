@@ -32,7 +32,7 @@ def torch_to_numba(func):
 
     def torchify(x):
         return torch.from_numpy(x) if isinstance(x, np.ndarray) else x
-    
+
     def wrapper_torch_to_numba(*args, **kwargs):
         args_numba = [numbafy(x) for x in args]
         kwargs_numba = {k: numbafy(v) for k, v in kwargs.items()}
@@ -40,7 +40,7 @@ def torch_to_numba(func):
         if isinstance(out, list):
             out = [torchify(x) for x in out]
         elif isinstance(out, tuple):
-            out = tuple([torchify(x) for x in list(out)])
+            out = tuple(torchify(x) for x in list(out))
         elif isinstance(out, dict):
             out = {k: torchify(v) for k, v in out.items()}
         else:
@@ -83,11 +83,7 @@ def pose_to_rotation_matrix_cpu(opk):
                     [sk, ck, 0.0],
                     [0.0, 0.0, 1.0]], dtype=np.float32)
 
-    # Global inverse rotation matrix to go from cartesian to
-    # camera-system spherical coordinates
-    M = np.dot(M_o, np.dot(M_p, M_k))
-
-    return M
+    return np.dot(M_o, np.dot(M_p, M_k))
 
 
 def pose_to_rotation_matrix_cuda(opk):
@@ -119,11 +115,7 @@ def pose_to_rotation_matrix_cuda(opk):
                         [sk, ck, 0.0],
                         [0.0, 0.0, 1.0]]).float().to(device)
 
-    # Global inverse rotation matrix to go from cartesian to
-    # camera-system spherical coordinates
-    M = torch.mm(M_o, torch.mm(M_p, M_k))
-
-    return M
+    return torch.mm(M_o, torch.mm(M_p, M_k))
 
 
 @njit(cache=True, nogil=True)
@@ -301,14 +293,13 @@ def fisheye_projection_cpu(
     :param camera:
     :return:
     """
-    if camera == 'kitti360_fisheye':
-        camera_to_world = img_extrinsic
-        T = camera_to_world[:3, 3].copy().reshape((1, 3))
-        R = camera_to_world[:3, :3].copy()
-        p = R.T @ (xyz - T).T
-    else:
+    if camera != 'kitti360_fisheye':
         raise ValueError
 
+    camera_to_world = img_extrinsic
+    T = camera_to_world[:3, 3].copy().reshape((1, 3))
+    R = camera_to_world[:3, :3].copy()
+    p = R.T @ (xyz - T).T
     # Recover fisheye camera intrinsic parameters
     xi = img_intrinsic_fisheye[0]
     k1 = img_intrinsic_fisheye[1]
@@ -321,7 +312,7 @@ def fisheye_projection_cpu(
     # Compute float pixel coordinates
     p = p.T
     norm = norm_cpu(p)
-    
+
     x = p[:, 0] / (norm + 1e-4)
     y = p[:, 1] / (norm + 1e-4)
     z = p[:, 2] / (norm + 1e-4)
@@ -354,14 +345,13 @@ def fisheye_projection_cuda(
     :param camera:
     :return:
     """
-    if camera == 'kitti360_fisheye':
-        camera_to_world = img_extrinsic
-        T = camera_to_world[:3, 3].view(1, 3)
-        R = camera_to_world[:3, :3]
-        p = R.T @ (xyz - T).T
-
-    else:
+    if camera != 'kitti360_fisheye':
         raise ValueError
+
+    camera_to_world = img_extrinsic
+    T = camera_to_world[:3, 3].view(1, 3)
+    R = camera_to_world[:3, :3]
+    p = R.T @ (xyz - T).T
 
     # Recover fisheye camera intrinsic parameters
     xi = img_intrinsic_fisheye[0]
@@ -423,9 +413,9 @@ def field_of_view_cpu(
         in_fov *= (y_pix < y_max)
 
     if z is not None:
-        in_fov *= (0 < z)
+        in_fov *= z > 0
 
-    if not img_mask is None:
+    if img_mask is not None:
         n_points = x_pix.shape[0]
         x_int = np.floor(x_pix).astype(np.uint32)
         y_int = np.floor(y_pix).astype(np.uint32)
@@ -466,9 +456,9 @@ def field_of_view_cuda(
         in_fov *= (y_pix < y_max)
 
     if z is not None:
-        in_fov *= (0 < z)
+        in_fov *= z > 0
 
-    if not img_mask is None:
+    if img_mask is not None:
         x_int = torch.floor(x_pix).long()
         y_int = torch.floor(y_pix).long()
         in_fov = torch.logical_and(in_fov, img_mask[x_int, y_int])
@@ -681,8 +671,7 @@ def equirectangular_splat_cpu(
     y_min = crop_top
     y_max = img_size[1] - crop_bottom
     for i in range(splat.shape[0]):
-        if splat[i, 0] < x_min:
-            splat[i, 0] = x_min
+        splat[i, 0] = max(splat[i, 0], x_min)
         if splat[i, 0] > x_max - 1:
             splat[i, 0] = x_max - 1
 
@@ -804,8 +793,7 @@ def pinhole_splat_cpu(
     y_min = crop_top
     y_max = img_size[1] - crop_bottom
     for i in range(splat.shape[0]):
-        if splat[i, 0] < x_min:
-            splat[i, 0] = x_min
+        splat[i, 0] = max(splat[i, 0], x_min)
         if splat[i, 0] > x_max - 1:
             splat[i, 0] = x_max - 1
 
@@ -930,8 +918,7 @@ def fisheye_splat_cpu(
     y_min = crop_top
     y_max = img_size[1] - crop_bottom
     for i in range(splat.shape[0]):
-        if splat[i, 0] < x_min:
-            splat[i, 0] = x_min
+        splat[i, 0] = max(splat[i, 0], x_min)
         if splat[i, 0] > x_max - 1:
             splat[i, 0] = x_max - 1
 
@@ -1101,7 +1088,7 @@ def visibility_from_splatting_cpu(
     :return:
     """
     assert x_proj.shape[0] == y_proj.shape[0] == dist.shape[0] > 0
-    
+
     # Need to set defaults inside the function rather than in the kwargs
     # because those will be overwritten by the parent CPU-GPU dispatcher
     # function
@@ -1376,7 +1363,7 @@ def visibility_from_depth_map(
 
     # Read the depth map
     # TODO: only supports S3DIS-type depth map. Extend to other formats
-    assert depth_map_path is not None, f'Please provide depth_map_path.'
+    assert depth_map_path is not None, 'Please provide depth_map_path.'
     depth_map = read_s3dis_depth_map(depth_map_path, img_size=img_size, empty=-1)
     depth_map = depth_map.to(x_proj.device)
 
@@ -1407,8 +1394,10 @@ def k_nn_image_system(
     :param x_width:
     :return:
     """
-    assert x_margin is None or x_width > 0, \
-        f'x_margin and x_width must both be provided for image wrapping.'
+    assert (
+        x_margin is None or x_width > 0
+    ), 'x_margin and x_width must both be provided for image wrapping.'
+
 
     # Prepare query and search sets for KNN. Optionally wrap image for
     # neighbor search by the border.
@@ -1629,8 +1618,7 @@ def visibility(
 
     # Return if no projections are found
     if x_proj.shape[0] == 0:
-        out = {}
-        out['idx'] = torch.empty((0,), dtype=torch.long, device=in_device)
+        out = {'idx': torch.empty((0,), dtype=torch.long, device=in_device)}
         out['x'] = torch.empty((0,), dtype=torch.long, device=in_device)
         out['y'] = torch.empty((0,), dtype=torch.long, device=in_device)
         out['depth'] = torch.empty((0,), dtype=torch.float, device=in_device)

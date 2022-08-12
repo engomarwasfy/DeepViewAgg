@@ -17,12 +17,12 @@ class NormalizeRGB(object):
 
     def __call__(self, data):
         assert hasattr(data, "rgb")
-        if not (data.rgb.max() <= 1 and data.rgb.min() >= 0):
+        if data.rgb.max() > 1 or data.rgb.min() < 0:
             data.rgb = data.rgb.float() / 255.0
         return data
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self._normalize)
+        return f"{self.__class__.__name__}({self._normalize})"
 
 
 class ChromaticTranslation(object):
@@ -46,7 +46,7 @@ class ChromaticTranslation(object):
         return data
 
     def __repr__(self):
-        return "{}(trans_range_ratio={})".format(self.__class__.__name__, self.trans_range_ratio)
+        return f"{self.__class__.__name__}(trans_range_ratio={self.trans_range_ratio})"
 
 
 class ChromaticAutoContrast(object):
@@ -82,9 +82,7 @@ class ChromaticAutoContrast(object):
         return data
 
     def __repr__(self):
-        return "{}(randomize_blend_factor={}, blend_factor={})".format(
-            self.__class__.__name__, self.randomize_blend_factor, self.blend_factor
-        )
+        return f"{self.__class__.__name__}(randomize_blend_factor={self.randomize_blend_factor}, blend_factor={self.blend_factor})"
 
 
 class ChromaticJitter:
@@ -109,7 +107,7 @@ class ChromaticJitter:
         return data
 
     def __repr__(self):
-        return "{}(std={})".format(self.__class__.__name__, self.std)
+        return f"{self.__class__.__name__}(std={self.std})"
 
 
 class DropFeature:
@@ -134,7 +132,7 @@ class DropFeature:
         return data
 
     def __repr__(self):
-        return "DropFeature: proba = {}, feature = {}".format(self._drop_proba, self._feature_name)
+        return f"DropFeature: proba = {self._drop_proba}, feature = {self._feature_name}"
 
 
 class Jitter:
@@ -161,4 +159,4 @@ class Jitter:
         return data
 
     def __repr__(self):
-        return "Jitter(mu={}, sigma={})".format(self.mu, self.sigma)
+        return f"Jitter(mu={self.mu}, sigma={self.sigma})"

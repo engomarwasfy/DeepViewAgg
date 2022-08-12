@@ -36,7 +36,7 @@ class BaseConvolutionDown(BaseConvolution):
     def __init__(self, sampler, neighbour_finder, *args, **kwargs):
         super(BaseConvolutionDown, self).__init__(sampler, neighbour_finder, *args, **kwargs)
 
-        self._index = kwargs.get("index", None)
+        self._index = kwargs.get("index")
 
     def conv(self, x, pos, edge_index, batch):
         raise NotImplementedError
@@ -69,7 +69,7 @@ class BaseMSConvolutionDown(BaseConvolution):
     def __init__(self, sampler, neighbour_finder: BaseMSNeighbourFinder, *args, **kwargs):
         super(BaseMSConvolutionDown, self).__init__(sampler, neighbour_finder, *args, **kwargs)
 
-        self._index = kwargs.get("index", None)
+        self._index = kwargs.get("index")
 
     def conv(self, x, pos, edge_index, batch):
         raise NotImplementedError
@@ -98,7 +98,7 @@ class BaseConvolutionUp(BaseConvolution):
     def __init__(self, neighbour_finder, *args, **kwargs):
         super(BaseConvolutionUp, self).__init__(None, neighbour_finder, *args, **kwargs)
 
-        self._index = kwargs.get("index", None)
+        self._index = kwargs.get("index")
         self._skip = kwargs.get("skip", True)
 
     def conv(self, x, pos, pos_skip, batch, batch_skip, edge_index):
@@ -121,10 +121,7 @@ class BaseConvolutionUp(BaseConvolution):
         if x_skip is not None and self._skip:
             x = torch.cat([x, x_skip], dim=1)
 
-        if hasattr(self, "nn"):
-            batch_obj.x = self.nn(x)
-        else:
-            batch_obj.x = x
+        batch_obj.x = self.nn(x) if hasattr(self, "nn") else x
         copy_from_to(data_skip, batch_obj)
         return batch_obj
 
@@ -138,10 +135,7 @@ class GlobalBaseModule(torch.nn.Module):
     def forward(self, data, **kwargs):
         batch_obj = Batch()
         x, pos, batch = data.x, data.pos, data.batch
-        if pos is not None:
-            x = self.nn(torch.cat([x, pos], dim=1))
-        else:
-            x = self.nn(x)
+        x = self.nn(torch.cat([x, pos], dim=1)) if pos is not None else self.nn(x)
         x = self.pool(x, batch)
         batch_obj.x = x
         if pos is not None:
@@ -183,7 +177,7 @@ class BaseResnetBlockDown(BaseConvolutionDown):
     def __init__(self, sampler, neighbour_finder, *args, **kwargs):
         super(BaseResnetBlockDown, self).__init__(sampler, neighbour_finder, *args, **kwargs)
 
-        in_features, out_features, conv_features = kwargs.get("down_conv_nn", None)
+        in_features, out_features, conv_features = kwargs.get("down_conv_nn")
 
         self.in_features = in_features
         self.out_features = out_features

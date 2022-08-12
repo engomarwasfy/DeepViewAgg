@@ -40,8 +40,8 @@ class BaseDenseConvolutionDown(BaseConvolution):
 
     def __init__(self, sampler, neighbour_finder: BaseMSNeighbourFinder, *args, **kwargs):
         super(BaseDenseConvolutionDown, self).__init__(sampler, neighbour_finder, *args, **kwargs)
-        self._index = kwargs.get("index", None)
-        self._save_sampling_id = kwargs.get("save_sampling_id", None)
+        self._index = kwargs.get("index")
+        self._save_sampling_id = kwargs.get("save_sampling_id")
 
     def conv(self, x, pos, new_pos, radius_idx, scale_idx):
         """ Implements a Dense convolution where radius_idx represents
@@ -68,10 +68,7 @@ class BaseDenseConvolutionDown(BaseConvolution):
             can be used to shortcut the sampler [B,K]
         """
         x, pos = data.x, data.pos
-        if sample_idx:
-            idx = sample_idx
-        else:
-            idx = self.sampler(pos)
+        idx = sample_idx or self.sampler(pos)
         idx = idx.unsqueeze(-1).repeat(1, 1, pos.shape[-1]).long()
         new_pos = pos.gather(1, idx)
 
@@ -83,7 +80,7 @@ class BaseDenseConvolutionDown(BaseConvolution):
 
         new_data = Data(pos=new_pos, x=new_x)
         if self._save_sampling_id:
-            setattr(new_data, "sampling_id_{}".format(self._index), idx[:, :, 0])
+            setattr(new_data, f"sampling_id_{self._index}", idx[:, :, 0])
         return new_data
 
 
@@ -93,7 +90,7 @@ class BaseDenseConvolutionUp(BaseConvolution):
 
     def __init__(self, neighbour_finder, *args, **kwargs):
         super(BaseDenseConvolutionUp, self).__init__(None, neighbour_finder, *args, **kwargs)
-        self._index = kwargs.get("index", None)
+        self._index = kwargs.get("index")
         self._skip = kwargs.get("skip", True)
 
     def conv(self, pos, pos_skip, x):
@@ -132,19 +129,17 @@ class DenseFPModule(BaseDenseConvolutionUp):
     def conv(self, pos, pos_skip, x):
         assert pos_skip.shape[2] == 3
 
-        if pos is not None:
-            dist, idx = tp.three_nn(pos_skip, pos)
-            dist_recip = 1.0 / (dist + 1e-8)
-            norm = torch.sum(dist_recip, dim=2, keepdim=True)
-            weight = dist_recip / norm
-            interpolated_feats = tp.three_interpolate(x, idx, weight)
-        else:
-            interpolated_feats = x.expand(*(x.size()[0:2] + (pos_skip.size(1),)))
+        if pos is None:
+            return x.expand(*x.size()[:2] + (pos_skip.size(1),))
 
-        return interpolated_feats
+        dist, idx = tp.three_nn(pos_skip, pos)
+        dist_recip = 1.0 / (dist + 1e-8)
+        norm = torch.sum(dist_recip, dim=2, keepdim=True)
+        weight = dist_recip / norm
+        return tp.three_interpolate(x, idx, weight)
 
     def __repr__(self):
-        return "{}: {} ({})".format(self.__class__.__name__, self.nb_params, self.nn)
+        return f"{self.__class__.__name__}: {self.nb_params} ({self.nn})"
 
 
 class GlobalDenseBaseModule(torch.nn.Module):
@@ -152,7 +147,7 @@ class GlobalDenseBaseModule(torch.nn.Module):
         super(GlobalDenseBaseModule, self).__init__()
         self.nn = MLP2D(nn, bn=bn, activation=activation, bias=False)
         if aggr.lower() not in ["mean", "max"]:
-            raise Exception("The aggregation provided is unrecognized {}".format(aggr))
+            raise Exception(f"The aggregation provided is unrecognized {aggr}")
         self._aggr = aggr.lower()
 
     @property
@@ -163,7 +158,7 @@ class GlobalDenseBaseModule(torch.nn.Module):
             [type] -- [description]
         """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        self._nb_params = sum([np.prod(p.size()) for p in model_parameters])
+        self._nb_params = sum(np.prod(p.size()) for p in model_parameters)
         return self._nb_params
 
     def forward(self, data, **kwargs):
@@ -177,11 +172,14 @@ class GlobalDenseBaseModule(torch.nn.Module):
         elif self._aggr == "mean":
             x = x.squeeze(-1).mean(-1)
         else:
-            raise NotImplementedError("The following aggregation {} is not recognized".format(self._aggr))
+            raise NotImplementedError(
+                f"The following aggregation {self._aggr} is not recognized"
+            )
+
 
         pos = None  # pos.mean(1).unsqueeze(1)
         x = x.unsqueeze(-1)
         return Data(x=x, pos=pos)
 
     def __repr__(self):
-        return "{}: {} (aggr={}, {})".format(self.__class__.__name__, self.nb_params, self._aggr, self.nn)
+        return f"{self.__class__.__name__}: {self.nb_params} (aggr={self._aggr}, {self.nn})"

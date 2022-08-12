@@ -12,7 +12,7 @@ try:
     from pycuda.compiler import SourceModule
     FUSION_GPU_MODE = 1
 except Exception as err:
-    print('Warning: {}'.format(err))
+    print(f'Warning: {err}')
     print('Failed to import PyCUDA. Running fusion in CPU mode.')
     FUSION_GPU_MODE = 0
 

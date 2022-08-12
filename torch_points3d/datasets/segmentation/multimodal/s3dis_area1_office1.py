@@ -111,12 +111,20 @@ def s3dis_image_pose_pairs(
     Return the list of image-pose pairs. Orphans are ignored.
     """
     # Search for images and poses
-    image_names = sorted([
-        osp.basename(x).replace(image_suffix, '')
-        for x in glob.glob(osp.join(image_dir, '*' + image_suffix))])
-    pose_names = sorted([
-        osp.basename(x).replace(pose_suffix, '')
-        for x in glob.glob(osp.join(pose_dir, '*' + pose_suffix))])
+    image_names = sorted(
+        [
+            osp.basename(x).replace(image_suffix, '')
+            for x in glob.glob(osp.join(image_dir, f'*{image_suffix}'))
+        ]
+    )
+
+    pose_names = sorted(
+        [
+            osp.basename(x).replace(pose_suffix, '')
+            for x in glob.glob(osp.join(pose_dir, f'*{pose_suffix}'))
+        ]
+    )
+
 
     # Remove images specified by skip_names
     skip_names = skip_names if skip_names is not None else []
@@ -124,7 +132,7 @@ def s3dis_image_pose_pairs(
     pose_names = [x for x in pose_names if x not in skip_names]
 
     # Print orphans
-    if not image_names == pose_names:
+    if image_names != pose_names:
         image_orphan = [
             osp.join(image_dir, x + image_suffix)
             for x in set(image_names) - set(pose_names)]
@@ -144,11 +152,13 @@ def s3dis_image_pose_pairs(
     # Only return the recovered pairs
     correspondences = sorted(list(set(image_names).intersection(
         set(pose_names))))
-    pairs = [(
-        osp.join(image_dir, x + image_suffix),
-        osp.join(pose_dir, x + pose_suffix))
-        for x in correspondences]
-    return pairs
+    return [
+        (
+            osp.join(image_dir, x + image_suffix),
+            osp.join(pose_dir, x + pose_suffix),
+        )
+        for x in correspondences
+    ]
 
 
 # ----------------------------------------------------------------------
@@ -245,10 +255,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
 
     @property
     def center_labels(self):
-        if hasattr(self.data, "center_label"):
-            return self.data.center_label
-        else:
-            return None
+        return self.data.center_label if hasattr(self.data, "center_label") else None
 
     @property
     def raw_file_names(self):
@@ -354,7 +361,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                     #   - Area_2/hallway_11
                     #   - Area_5/hallway_6
                     if (area_num == 1 and room_name == 'hallway_11') or \
-                            (area_num == 4 and room_name == 'hallway_6'):
+                                (area_num == 4 and room_name == 'hallway_6'):
                         xy_center = (xyz[:, 0:2].max(dim=0)[0]
                                      + xyz[:, 0:2].min(dim=0)[0]) / 2
                         # 180° Z-rotation around the XY-center
@@ -372,7 +379,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                         data.instance_labels = instance_labels
 
                     if self.pre_filter is not None \
-                            and not self.pre_filter(data):
+                                and not self.pre_filter(data):
                         continue
 
                     data_list[area_num].append(data)
@@ -447,7 +454,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                 # 'area_5a' and 'area_5b' and one of them requires
                 # specific treatment for pose reading
                 folders = [f"area_{i + 1}"] if i != 4 \
-                    else ["area_5a", "area_5b"]
+                        else ["area_5a", "area_5b"]
 
                 image_info_list = [
                     {'path': i_file, **read_s3dis_pose(p_file)}
@@ -610,14 +617,13 @@ class S3DISSphereMM(S3DISOriginalFusedMM):
             # Return a random spherical sample and the associated area
             # id
             return self._get_random()
-        else:
-            # For test and val datasets
-            # Return the precomputed sphere at idx and the associated
-            # area id
-            test_sphere = self._test_spheres[idx].clone()
-            i_area = test_sphere.area_id
-            delattr(test_sphere, 'area_id')
-            return i_area, test_sphere
+        # For test and val datasets
+        # Return the precomputed sphere at idx and the associated
+        # area id
+        test_sphere = self._test_spheres[idx].clone()
+        i_area = test_sphere.area_id
+        delattr(test_sphere, 'area_id')
+        return i_area, test_sphere
 
     def process(self):
         # We have to include this method, otherwise the parent class
@@ -728,8 +734,10 @@ class S3DISFusedDataset(BaseDatasetMM):
         super().__init__(dataset_opt)
 
         sampling_format = dataset_opt.get('sampling_format', 'sphere')
-        assert sampling_format == 'sphere', \
-            f"Only sampling format 'sphere' is supported."
+        assert (
+            sampling_format == 'sphere'
+        ), "Only sampling format 'sphere' is supported."
+
 
         sample_per_epoch = dataset_opt.get('sample_per_epoch', 8)
 

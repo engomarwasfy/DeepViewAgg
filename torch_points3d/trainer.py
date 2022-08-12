@@ -62,7 +62,7 @@ class Trainer:
         else:
             device = "cpu"
         self._device = torch.device(device)
-        log.info("DEVICE : {}".format(self._device))
+        log.info(f"DEVICE : {self._device}")
 
         # Profiling
         if self.profiling:
@@ -96,9 +96,9 @@ class Trainer:
             self._model.set_pretrained_weights()
             if not self._checkpoint.validate(self._dataset.used_properties):
                 log.warning(
-                    "The model will not be able to be used from pretrained "
-                    "weights without the corresponding dataset. Current "
-                    "properties are {}".format(self._dataset.used_properties))
+                    f"The model will not be able to be used from pretrained weights without the corresponding dataset. Current properties are {self._dataset.used_properties}"
+                )
+
 
         self._checkpoint.dataset_properties = self._dataset.used_properties
 
@@ -158,21 +158,25 @@ class Trainer:
                 self._test_epoch(epoch, "test")
 
         # Single test evaluation in resume case
-        if self._checkpoint.start_epoch > self._cfg.training.epochs:
-            if self._dataset.has_test_loaders:
-                self._test_epoch(epoch, "test")
+        if (
+            self._checkpoint.start_epoch > self._cfg.training.epochs
+            and self._dataset.has_test_loaders
+        ):
+            self._test_epoch(epoch, "test")
 
     def eval(self, stage_name=""):
         self._is_training = False
 
         epoch = self._checkpoint.start_epoch
-        if self._dataset.has_val_loader:
-            if not stage_name or stage_name == "val":
-                self._test_epoch(epoch, "val")
+        if self._dataset.has_val_loader and (
+            not stage_name or stage_name == "val"
+        ):
+            self._test_epoch(epoch, "val")
 
-        if self._dataset.has_test_loaders:
-            if not stage_name or stage_name == "test":
-                self._test_epoch(epoch, "test")
+        if self._dataset.has_test_loaders and (
+            not stage_name or stage_name == "test"
+        ):
+            self._test_epoch(epoch, "test")
 
     def _finalize_epoch(self, epoch):
         self._tracker.finalise(**self.tracker_options)
@@ -220,9 +224,8 @@ class Trainer:
                 if self.early_break:
                     break
 
-                if self.profiling:
-                    if i > self.num_batches:
-                        return 0
+                if self.profiling and i > self.num_batches:
+                    return 0
 
         self._finalize_epoch(epoch)
 
@@ -245,7 +248,7 @@ class Trainer:
             if not self._dataset.has_labels(stage_name) and not self.tracker_options.get(
                 "make_submission", False
             ):  # No label, no submission -> do nothing
-                log.warning("No forward will be run on dataset %s." % stage_name)
+                log.warning(f"No forward will be run on dataset {stage_name}.")
                 continue
 
             for i in range(voting_runs):
@@ -264,30 +267,36 @@ class Trainer:
                         if self.early_break:
                             break
 
-                        if self.profiling:
-                            if i > self.num_batches:
-                                return 0
+                        if self.profiling and i > self.num_batches:
+                            return 0
 
             self._finalize_epoch(epoch)
             self._tracker.print_summary()
 
     @property
     def early_break(self):
-        if not hasattr(self._cfg, "debugging"):
-            return False
-        return getattr(self._cfg.debugging, "early_break", False) and self._is_training
+        return (
+            getattr(self._cfg.debugging, "early_break", False)
+            and self._is_training
+            if hasattr(self._cfg, "debugging")
+            else False
+        )
 
     @property
     def profiling(self):
-        if not hasattr(self._cfg, "debugging"):
-            return False
-        return getattr(self._cfg.debugging, "profiling", False)
+        return (
+            getattr(self._cfg.debugging, "profiling", False)
+            if hasattr(self._cfg, "debugging")
+            else False
+        )
 
     @property
     def num_batches(self):
-        if not hasattr(self._cfg, "debugging"):
-            return None
-        return getattr(self._cfg.debugging, "num_batches", 50)
+        return (
+            getattr(self._cfg.debugging, "num_batches", 50)
+            if hasattr(self._cfg, "debugging")
+            else None
+        )
 
     @property
     def enable_cudnn(self):
@@ -314,22 +323,29 @@ class Trainer:
 
     @property
     def precompute_multi_scale(self):
-        if not self.has_training:
-            return self._model.conv_type == "PARTIAL_DENSE" and getattr(self._cfg.training, "precompute_multi_scale", False)
-        else:
-            return self._model.conv_type == "PARTIAL_DENSE" and getattr(self._cfg, "precompute_multi_scale", False)
+        return (
+            self._model.conv_type == "PARTIAL_DENSE"
+            and getattr(self._cfg, "precompute_multi_scale", False)
+            if self.has_training
+            else self._model.conv_type == "PARTIAL_DENSE"
+            and getattr(self._cfg.training, "precompute_multi_scale", False)
+        )
 
     @property
     def wandb_log(self):
-        if not self.has_training:
-            return False
-        return getattr_recursive(self._cfg, 'training.wandb.log', False)
+        return (
+            getattr_recursive(self._cfg, 'training.wandb.log', False)
+            if self.has_training
+            else False
+        )
         
     @property
     def tensorboard_log(self):
-        if not self.has_training:
-            return False
-        return getattr_recursive(self._cfg, 'training.tensorboard.log', False)
+        return (
+            getattr_recursive(self._cfg, 'training.tensorboard.log', False)
+            if self.has_training
+            else False
+        )
         
     @property
     def tracker_options(self):

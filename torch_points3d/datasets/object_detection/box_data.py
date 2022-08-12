@@ -28,4 +28,4 @@ class BoxData:
         return self.score is None
 
     def __repr__(self):
-        return "{}: (score={})".format(self.__class__.__name__, self.score)
+        return f"{self.__class__.__name__}: (score={self.score})"

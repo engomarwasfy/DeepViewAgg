@@ -54,8 +54,7 @@ class BaseDatasetMM(BaseDataset):
             raise NotImplementedError(
                 "Multiscale not supported for multimodal data.")
 
-        is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
-        if is_dense:
+        if is_dense := ConvolutionFormatFactory.check_is_dense_format(conv_type):
             raise NotImplementedError(
                 "Dense conv_type not supported for multimodal data.")
 
@@ -78,15 +77,24 @@ class BaseDatasetMM(BaseDataset):
         Returns:
             [type] -- [description]
         """
-        if isinstance(transform_in, ComposeMultiModal) or isinstance(transform_in, list):
-            if len(list_transform_class) > 0:
-                transform_out = []
-                transforms = transform_in.transforms if isinstance(transform_in, ComposeMultiModal) else transform_in
-                for t in transforms:
-                    if not isinstance(t, tuple(list_transform_class)):
-                        transform_out.append(t)
-                transform_out = ComposeMultiModal(transform_out)
-        else:
+        if (
+            isinstance(transform_in, ComposeMultiModal)
+            and len(list_transform_class) > 0
+            or not isinstance(transform_in, ComposeMultiModal)
+            and isinstance(transform_in, list)
+            and len(list_transform_class) > 0
+        ):
+            transforms = transform_in.transforms if isinstance(transform_in, ComposeMultiModal) else transform_in
+            transform_out = [
+                t
+                for t in transforms
+                if not isinstance(t, tuple(list_transform_class))
+            ]
+
+            transform_out = ComposeMultiModal(transform_out)
+        elif not isinstance(transform_in, ComposeMultiModal) and not isinstance(
+            transform_in, list
+        ):
             transform_out = transform_in
         return transform_out
 

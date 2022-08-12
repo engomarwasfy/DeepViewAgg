@@ -61,8 +61,7 @@ class Test3DMatch(Base3DMatchTest):
         patch_dataset = [self.patch_extractor(fragment, fragment.keypoints[i])
                          for i in range(self.num_random_pt)]
 
-        simple_patch = SimplePatch(patch_dataset, self.transform)
-        return simple_patch
+        return SimplePatch(patch_dataset, self.transform)
 
     def __len__(self):
         return len(self.table)

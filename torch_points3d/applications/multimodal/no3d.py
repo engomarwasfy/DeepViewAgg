@@ -26,21 +26,22 @@ class No3DEncoder(BackboneBasedModel, ABC):
         # Make sure the model is multimodal and has no 3D. Note that
         # the BackboneBasedModel.__init__ carries most of the required
         # initialization.
-        assert self.is_multimodal, \
-            f"No3DEncoder should carry at least one non-3D modality."
-        assert self.no_3d_conv, \
-            f"No3DEncoder should not have 3D-specific modules."
+        assert (
+            self.is_multimodal
+        ), "No3DEncoder should carry at least one non-3D modality."
+
+        assert self.no_3d_conv, "No3DEncoder should not have 3D-specific modules."
 
         # Recover size of output features
-        default_output_nc = kwargs.get("default_output_nc", None)
+        default_output_nc = kwargs.get("default_output_nc")
         if not default_output_nc:
             mod_out_nc_list = [extract_output_nc(getattr(
                 model_config.down_conv, m)) for m in self.modalities]
             assert all(o == mod_out_nc_list[0] for o in mod_out_nc_list), \
-                f"Expected all modality branches outputs to have the same " \
-                f"feature size but got {mod_out_nc_list} sizes instead."
+                    f"Expected all modality branches outputs to have the same " \
+                    f"feature size but got {mod_out_nc_list} sizes instead."
             default_output_nc = mod_out_nc_list[0]
-            
+
         self._output_nc = default_output_nc
 
         # Set the MLP head if any

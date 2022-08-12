@@ -28,7 +28,7 @@ class LossAnnealer(torch.nn.modules.loss._Loss):
         self.normalized_loss = True
 
     def forward(self, loss_1, loss_2, **kwargs):
-        annealing_alpha = kwargs.get("annealing_alpha", None)
+        annealing_alpha = kwargs.get("annealing_alpha")
         if annealing_alpha is None:
             return self._coeff * loss_1 + (1 - self._coeff) * loss_2
         else:
@@ -60,7 +60,7 @@ class LossFactory(torch.nn.modules.loss._Loss):
     def forward(self, input, target, **kwargs):
         added_arguments = OrderedDict()
         for key in self.search_for_args:
-            added_arguments[key] = kwargs.get(key, None)
+            added_arguments[key] = kwargs.get(key)
         input, target = filter_valid(input, target)
         return self._loss_func(input, target, **added_arguments, **self.special_args)
 
@@ -85,11 +85,7 @@ class FocalLoss(torch.nn.modules.loss._Loss):
             at = self._alphas.gather(0, target)
             logpt = logpt * Variable(at)
 
-        if self.normalized:
-            sum_ = 1 / torch.sum((1 - pt) ** self._gamma)
-        else:
-            sum_ = 1
-
+        sum_ = 1 / torch.sum((1 - pt) ** self._gamma) if self.normalized else 1
         loss = -1 * sum_ * (1 - pt) ** self._gamma * logpt
         return loss.sum()
 

@@ -73,17 +73,13 @@ class MultiScaleBatch(MultiScaleData):
         # Build multiscale batches
         multiscale = []
         for scale in range(num_scales):
-            ms_scale = []
-            for data_entry in data_list:
-                ms_scale.append(data_entry.multiscale[scale])
+            ms_scale = [data_entry.multiscale[scale] for data_entry in data_list]
             multiscale.append(from_data_list_token(ms_scale))
 
         # Build upsample batches
         upsample = []
         for scale in range(num_upsample):
-            upsample_scale = []
-            for data_entry in data_list:
-                upsample_scale.append(data_entry.upsample[scale])
+            upsample_scale = [data_entry.upsample[scale] for data_entry in data_list]
             upsample.append(from_data_list_token(upsample_scale))
 
         # Create batch from non multiscale data
@@ -118,7 +114,7 @@ def from_data_list_token(data_list, follow_batch=[]):
         batch[key] = []
 
     for key in follow_batch:
-        batch["{}_batch".format(key)] = []
+        batch[f"{key}_batch"] = []
 
     cumsum = {key: 0 for key in keys}
     batch.batch = []
@@ -138,7 +134,7 @@ def from_data_list_token(data_list, follow_batch=[]):
 
             if key in follow_batch:
                 item = torch.full((size,), i, dtype=torch.long)
-                batch["{}_batch".format(key)].append(item)
+                batch[f"{key}_batch"].append(item)
 
         num_nodes = data.num_nodes
         if num_nodes is not None:
@@ -153,11 +149,10 @@ def from_data_list_token(data_list, follow_batch=[]):
         if torch.is_tensor(item):
             batch[key] = torch.cat(
                 batch[key], dim=data_list[0].__cat_dim__(key, item))
-        elif isinstance(item, int) or isinstance(item, float):
+        elif isinstance(item, (int, float)):
             batch[key] = torch.tensor(batch[key])
         else:
-            raise ValueError(
-                "Unsupported attribute type {} : {}".format(type(item), item))
+            raise ValueError(f"Unsupported attribute type {type(item)} : {item}")
 
     if torch_geometric.is_debug_enabled():
         batch.debug()

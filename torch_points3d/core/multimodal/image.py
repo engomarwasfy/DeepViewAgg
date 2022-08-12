@@ -162,12 +162,12 @@ def sparse_interpolation(features, coords, batch, padding_mode='border'):
     w_bl = torch.prod(pixels - pixels_tr, dim=1).abs().unsqueeze(1)
     w_br = torch.prod(pixels - pixels_tl, dim=1).abs().unsqueeze(1)
 
-    out = w_tl * images_pad[batch, :, pixels_tl[:, 0], pixels_tl[:, 1]] \
-          + w_tr * images_pad[batch, :, pixels_tr[:, 0], pixels_tr[:, 1]] \
-          + w_bl * images_pad[batch, :, pixels_bl[:, 0], pixels_bl[:, 1]] \
-          + w_br * images_pad[batch, :, pixels_br[:, 0], pixels_br[:, 1]]
-
-    return out
+    return (
+        w_tl * images_pad[batch, :, pixels_tl[:, 0], pixels_tl[:, 1]]
+        + w_tr * images_pad[batch, :, pixels_tr[:, 0], pixels_tr[:, 1]]
+        + w_bl * images_pad[batch, :, pixels_bl[:, 0], pixels_bl[:, 1]]
+        + w_br * images_pad[batch, :, pixels_br[:, 0], pixels_br[:, 1]]
+    )
 
 
 # -------------------------------------------------------------------- #
@@ -260,10 +260,10 @@ class SameSettingImageData:
         self.ref_size = ref_size
         self.proj_upscale = proj_upscale
         self.rollings = rollings if rollings is not None \
-            else torch.zeros(self.num_views, dtype=torch.int64)
+                else torch.zeros(self.num_views, dtype=torch.int64)
         self.crop_size = crop_size if crop_size is not None else self.ref_size
         self.crop_offsets = crop_offsets if crop_offsets is not None \
-            else torch.zeros((self.num_views, 2), dtype=torch.int64)
+                else torch.zeros((self.num_views, 2), dtype=torch.int64)
         self.downscale = downscale
         self.x = x
         self.mappings = mappings
@@ -273,120 +273,129 @@ class SameSettingImageData:
         # self.debug()
 
     def debug(self):
-        assert self.path.shape[0] == self.num_views, \
-            f"Attributes 'path' and 'pos' must have the same length."
+        assert (
+            self.path.shape[0] == self.num_views
+        ), "Attributes 'path' and 'pos' must have the same length."
 
-        assert self.has_opk != self.has_extrinsic, \
-            f"Poses must either be provided as Omega-Phi-Kappa angles or as " \
-            f"a 4x4 extrinsic matrix."
+
+        assert (
+            self.has_opk != self.has_extrinsic
+        ), 'Poses must either be provided as Omega-Phi-Kappa angles or as a 4x4 extrinsic matrix.'
+
 
         if self.has_opk:
-            assert self.opk.shape[0] == self.num_views, \
-                f"Attributes 'pos' and 'opk' must have the same length."
-            assert self.device == self.opk.device, \
-                f"Discrepancy in the devices of 'pos' and 'opk' attributes. " \
-                f"Please use `SameSettingImageData.to()` to set the device."
+            assert (
+                self.opk.shape[0] == self.num_views
+            ), "Attributes 'pos' and 'opk' must have the same length."
+
+            assert (
+                self.device == self.opk.device
+            ), "Discrepancy in the devices of 'pos' and 'opk' attributes. Please use `SameSettingImageData.to()` to set the device."
+
 
         if self.has_extrinsic:
             assert isinstance(self.extrinsic, torch.Tensor), \
-                f"Expected a Tensor but got {type(self.extrinsic)} instead."
+                    f"Expected a Tensor but got {type(self.extrinsic)} instead."
             assert self.extrinsic.shape == (self.num_views, 4, 4), \
-                f"Expected a ({self.num_views}, 4, 4) Tensor but got " \
-                f"{self.extrinsic.shape} instead."
-            assert self.device == self.extrinsic.device, \
-                f"Discrepancy in the devices of 'pos' and 'extrinsic' " \
-                f"attributes. Please use `SameSettingImageData.to()` to set " \
-                f"the device."
+                    f"Expected a ({self.num_views}, 4, 4) Tensor but got " \
+                    f"{self.extrinsic.shape} instead."
+            assert (
+                self.device == self.extrinsic.device
+            ), "Discrepancy in the devices of 'pos' and 'extrinsic' attributes. Please use `SameSettingImageData.to()` to set the device."
+
 
         if self.is_pinhole:
             for key in self._pinhole_keys:
                 p = getattr(self, key)
                 assert isinstance(p, torch.Tensor), \
-                    f"Expected a Tensor but got {type(p)} instead."
+                        f"Expected a Tensor but got {type(p)} instead."
                 assert p.squeeze().shape == self.num_views, \
-                    f"Expected '{key}' to be a ({self.num_views},) Tensor but " \
-                    f"got {p.squeeze().shape} instead."
+                        f"Expected '{key}' to be a ({self.num_views},) Tensor but " \
+                        f"got {p.squeeze().shape} instead."
                 assert p.device == self.device, \
-                    f"Discrepancy in the devices of 'pos' and '{key}' " \
-                    f"attributes. Please use `SameSettingImageData.to()` to " \
-                    f"set the device."
+                        f"Discrepancy in the devices of 'pos' and '{key}' " \
+                        f"attributes. Please use `SameSettingImageData.to()` to " \
+                        f"set the device."
 
         if self.is_fisheye:
             for key in self._fisheye_keys:
                 p = getattr(self, key)
                 assert isinstance(p, torch.Tensor), \
-                    f"Expected a Tensor but got {type(p)} instead."
+                        f"Expected a Tensor but got {type(p)} instead."
                 assert p.squeeze().shape == self.num_views, \
-                    f"Expected '{key}' to be a ({self.num_views},) Tensor but " \
-                    f"got {p.squeeze().shape} instead."
+                        f"Expected '{key}' to be a ({self.num_views},) Tensor but " \
+                        f"got {p.squeeze().shape} instead."
                 assert p.device == self.device, \
-                    f"Discrepancy in the devices of 'pos' and '{key}' " \
-                    f"attributes. Please use `SameSettingImageData.to()` to " \
-                    f"set the device."
+                        f"Discrepancy in the devices of 'pos' and '{key}' " \
+                        f"attributes. Please use `SameSettingImageData.to()` to " \
+                        f"set the device."
 
         assert len(tuple(self.ref_size)) == 2, \
-            f"Expected len(ref_size)=2 but got {len(self.ref_size)} instead."
+                f"Expected len(ref_size)=2 but got {len(self.ref_size)} instead."
         assert self.proj_upscale >= 1, \
-            f"Expected scalar larger than 1 but got {self.proj_upscale} " \
-            f"instead."
+                f"Expected scalar larger than 1 but got {self.proj_upscale} " \
+                f"instead."
         assert self.rollings.shape[0] == self.num_views, \
-            f"Expected tensor of size {self.num_views} but got " \
-            f"{self.rollings.shape[0]} instead."
+                f"Expected tensor of size {self.num_views} but got " \
+                f"{self.rollings.shape[0]} instead."
         assert len(tuple(self.crop_size)) == 2, \
-            f"Expected len(crop_size)=2 but got {len(self.crop_size)} instead."
+                f"Expected len(crop_size)=2 but got {len(self.crop_size)} instead."
         assert all(a <= b for a, b in zip(self.crop_size, self.ref_size)), \
-            f"Expected size smaller than {self.ref_size} but got " \
-            f"{self.crop_size} instead."
+                f"Expected size smaller than {self.ref_size} but got " \
+                f"{self.crop_size} instead."
         assert self.crop_offsets.shape == (self.num_views, 2), \
-            f"Expected tensor of shape {(self.num_views, 2)} but got " \
-            f"{self.crop_offsets.shape} instead."
+                f"Expected tensor of shape {(self.num_views, 2)} but got " \
+                f"{self.crop_offsets.shape} instead."
         assert self._downscale >= 1, \
-            f"Expected scalar larger than 1 but got {self._downscale} instead."
+                f"Expected scalar larger than 1 but got {self._downscale} instead."
 
         if self.x is not None:
             assert isinstance(self.x, torch.Tensor), \
-                f"Expected a tensor of image features but got " \
-                f"{type(self.x)} instead."
+                    f"Expected a tensor of image features but got " \
+                    f"{type(self.x)} instead."
             assert self.x.shape[0] == self.num_views \
-                   and self.x.shape[2] == self.img_size[1] \
-                   and self.x.shape[3] == self.img_size[0], \
-                f"Expected a tensor of shape ({self.num_views}, :, " \
-                f"{self.img_size[1]}, {self.img_size[0]}) but got " \
-                f"{self.x.shape} instead."
-            assert self.device == self.x.device, \
-                f"Discrepancy in the devices of 'pos' and 'x' attributes. " \
-                f"Please use `SameSettingImageData.to()` to set the device."
+                       and self.x.shape[2] == self.img_size[1] \
+                       and self.x.shape[3] == self.img_size[0], \
+                    f"Expected a tensor of shape ({self.num_views}, :, " \
+                    f"{self.img_size[1]}, {self.img_size[0]}) but got " \
+                    f"{self.x.shape} instead."
+            assert (
+                self.device == self.x.device
+            ), "Discrepancy in the devices of 'pos' and 'x' attributes. Please use `SameSettingImageData.to()` to set the device."
+
 
         if self.mappings is not None:
             assert isinstance(self.mappings, ImageMapping), \
-                f"Expected an ImageMapping but got {type(self.mappings)} " \
-                f"instead."
+                    f"Expected an ImageMapping but got {type(self.mappings)} " \
+                    f"instead."
             unique_idx = torch.unique(self.mappings.images)
             img_idx = torch.arange(self.num_views, device=self.device)
-            assert (unique_idx == img_idx).all(), \
-                f"Image indices in the mappings do not match the " \
-                f"SameSettingImageData image indices."
+            assert (
+                unique_idx == img_idx
+            ).all(), 'Image indices in the mappings do not match the SameSettingImageData image indices.'
+
             if self.mappings.num_items > 0:
                 w_max, h_max = self.mappings.pixels.max(dim=0).values
                 assert w_max < self.crop_size[0] and h_max < self.crop_size[1], \
-                    f"Max pixel values should be smaller than ({self.crop_size}) " \
-                    f"but got ({w_max, h_max}) instead."
-            assert self.device == self.mappings.device, \
-                f"Discrepancy in the devices of 'pos' and 'mappings' " \
-                f"attributes. Please use `SameSettingImageData.to()` to set " \
-                f"the device."
+                        f"Max pixel values should be smaller than ({self.crop_size}) " \
+                        f"but got ({w_max, h_max}) instead."
+            assert (
+                self.device == self.mappings.device
+            ), "Discrepancy in the devices of 'pos' and 'mappings' attributes. Please use `SameSettingImageData.to()` to set the device."
+
             self.mappings.debug()
 
         if self.mask is not None:
             assert self.mask.dtype == torch.bool, \
-                f"Expected a dtype=torch.bool but got dtype=" \
-                f"{self.mask.dtype} instead."
+                    f"Expected a dtype=torch.bool but got dtype=" \
+                    f"{self.mask.dtype} instead."
             assert self.mask.shape == self.proj_size, \
-                f"Expected mask of size {self.proj_size} but got " \
-                f"{self.mask.shape} instead."
-            assert self.device == self.mask.device, \
-                f"Discrepancy in the devices of 'pos' and 'mask' attributes." \
-                f" Please use `SameSettingImageData.to()` to set the device."
+                    f"Expected mask of size {self.proj_size} but got " \
+                    f"{self.mask.shape} instead."
+            assert (
+                self.device == self.mask.device
+            ), "Discrepancy in the devices of 'pos' and 'mask' attributes. Please use `SameSettingImageData.to()` to set the device."
+
 
         if getattr(self, 'visibility', None) is not None:
             assert isinstance(self.visibility, VisibilityModel)
@@ -409,13 +418,11 @@ class SameSettingImageData:
 
     @property
     def is_pinhole(self):
-        return not any(
-            getattr(self, a, None) is None for a in self._pinhole_keys)
+        return all(getattr(self, a, None) is not None for a in self._pinhole_keys)
 
     @property
     def is_fisheye(self):
-        return not any(
-            getattr(self, a, None) is None for a in self._fisheye_keys)
+        return all(getattr(self, a, None) is not None for a in self._fisheye_keys)
 
     @property
     def is_equirectangular(self):
@@ -587,16 +594,18 @@ class SameSettingImageData:
         """
         # Make sure no prior cropping or resizing was applied to the
         # images and mappings
-        assert self.ref_size[0] == self.img_size[0], \
-            f"CenterRoll cannot operate if images and mappings " \
-            f"underwent prior cropping or resizing."
-        assert self.crop_size is None \
-               or self.crop_size == self.ref_size, \
-            f"CenterRoll cannot operate if images and mappings " \
-            f"underwent prior cropping or resizing."
-        assert self.downscale is None or self.downscale == 1, \
-            f"CenterRoll cannot operate if images and mappings " \
-            f"underwent prior cropping or resizing."
+        assert (
+            self.ref_size[0] == self.img_size[0]
+        ), 'CenterRoll cannot operate if images and mappings underwent prior cropping or resizing.'
+
+        assert (
+            self.crop_size is None or self.crop_size == self.ref_size
+        ), 'CenterRoll cannot operate if images and mappings underwent prior cropping or resizing.'
+
+        assert (
+            self.downscale is None or self.downscale == 1
+        ), 'CenterRoll cannot operate if images and mappings underwent prior cropping or resizing.'
+
 
         # Edit the internal rollings attribute
         self._rollings = rollings
@@ -875,7 +884,7 @@ class SameSettingImageData:
             # Mappings are temporarily separating from self as they
             # will be affected by the indexing on images.
             seen_image_idx = lexunique(mappings.images) \
-                if mappings.num_items > 0 else []
+                    if mappings.num_items > 0 else []
             self_mappings = self.mappings
             self.mappings = None
             images = self[seen_image_idx]
@@ -885,12 +894,12 @@ class SameSettingImageData:
         # Merge mode
         elif mode == 'merge':
             images = self.clone()
-            
+
             # Merge correspondences should match the number of
             # points, which should be non-zero
             if not idx.shape[0] == self.num_points > 0:
                 return images
-            
+
             # All the output voxels should appear in merge 
             # correspondences 
             if not torch.arange(idx.max() + 1, device=self.device).equal(idx.unique()):
@@ -924,27 +933,25 @@ class SameSettingImageData:
         # Images are not affected if no mappings are present or
         # view_mask is None or all True
         if self.mappings is None or view_mask is None or torch.all(view_mask) \
-                or len(self) == 0:
+                    or len(self) == 0:
             return self.clone()
 
         # Select mappings wrt the point index
         mappings, seen_image_idx = self.mappings.select_views(view_mask)
 
+        self_mappings = self.mappings
         # Select the images used in the mappings. Selected images
         # are sorted by their order in image_indices. Mappings'
         # image indices will also be updated to the new ones.
         # Mappings are temporarily removed from the images as they
         # will be affected by the indexing on images.
         if seen_image_idx is not None:
-            self_mappings = self.mappings
             self.mappings = None
             images = self[seen_image_idx]
-            self.mappings = self_mappings
         else:
-            self_mappings = self.mappings
             self.mappings = None
             images = self.clone()
-            self.mappings = self_mappings
+        self.mappings = self_mappings
         images.mappings = mappings
 
         return images
@@ -1021,32 +1028,33 @@ class SameSettingImageData:
         # Rollings of the images
         if rollings is not None:
             assert rollings.dtype == torch.int64, \
-                f"Expected dtype=torch.int64 but got dtype={rollings.dtype} " \
-                f"instead."
+                    f"Expected dtype=torch.int64 but got dtype={rollings.dtype} " \
+                    f"instead."
             assert rollings.shape[0] == idx.shape[0], \
-                f"Expected tensor of shape {idx.shape[0]} but got " \
-                f"{rollings.shape[0]} instead."
+                    f"Expected tensor of shape {idx.shape[0]} but got " \
+                    f"{rollings.shape[0]} instead."
         else:
             rollings = torch.zeros(idx.shape[0]).long()
 
         # Cropping boxes size and offsets
         # XAND(crop_size and crop_offsets)
-        assert bool(crop_size) == bool(crop_offsets is not None), \
-            f"If either 'crop_size' or 'crop_offsets' is specified, both " \
-            f"must be specified."
+        assert bool(crop_size) == (
+            crop_offsets is not None
+        ), "If either 'crop_size' or 'crop_offsets' is specified, both must be specified."
+
         if crop_size is not None:
             crop_size = tuple(crop_size)
             assert len(crop_size) == 2, \
-                f"Expected len(crop_size)=2 but got {len(crop_size)} instead."
+                    f"Expected len(crop_size)=2 but got {len(crop_size)} instead."
             assert all(a <= b for a, b in zip(crop_size, size)), \
-                f"Expected crop_size to be smaller than size but got " \
-                f"size={size} and crop_size={crop_size} instead."
+                    f"Expected crop_size to be smaller than size but got " \
+                    f"size={size} and crop_size={crop_size} instead."
             assert crop_offsets.dtype == torch.int64, \
-                f"Expected dtype=torch.int64 but got dtype=" \
-                f"{crop_offsets.dtype} instead."
+                    f"Expected dtype=torch.int64 but got dtype=" \
+                    f"{crop_offsets.dtype} instead."
             assert crop_offsets.shape == (idx.shape[0], 2), \
-                f"Expected tensor of shape {(idx.shape[0], 2)} but got " \
-                f"{crop_offsets.shape} instead."
+                    f"Expected tensor of shape {(idx.shape[0], 2)} but got " \
+                    f"{crop_offsets.shape} instead."
         else:
             crop_size = size
             crop_offsets = torch.zeros((idx.shape[0], 2)).long()
@@ -1054,7 +1062,7 @@ class SameSettingImageData:
         # Downsampling after cropping
         if downscale is not None:
             assert downscale >= 1, \
-                f"Expected scalar larger than 1 but got {downscale} instead."
+                    f"Expected scalar larger than 1 but got {downscale} instead."
 
         # Read images from files
         path_enum = tq(self.path[idx]) if show_progress else self.path[idx]
@@ -1116,8 +1124,10 @@ class SameSettingImageData:
         will raise an error.
         """
         idx = tensor_idx(idx).to(self.device)
-        assert idx.unique().numel() == idx.shape[0], \
-            f"Index must not contain duplicates."
+        assert (
+            idx.unique().numel() == idx.shape[0]
+        ), "Index must not contain duplicates."
+
         idx_numpy = np.asarray(idx.cpu())
 
         return self.__class__(
@@ -1232,27 +1242,21 @@ class SameSettingImageData:
         `[B, C, H, W]`. The returned indexing object idx is intended to
         be used for recovering the mapped features as: `X[idx]`.
         """
-        if self.mappings is not None:
-            return self.mappings.feature_map_indexing
-        return None
+        return None if self.mappings is None else self.mappings.feature_map_indexing
 
     @property
     def atomic_csr_indexing(self):
         """Return the indices that will be used for atomic-level pooling
         on CSR-formatted data.
         """
-        if self.mappings is not None:
-            return self.mappings.atomic_csr_indexing
-        return None
+        return self.mappings.atomic_csr_indexing if self.mappings is not None else None
 
     @property
     def view_csr_indexing(self):
         """Return the indices that will be used for view-level pooling
         on CSR-formatted data.
         """
-        if self.mappings is not None:
-            return self.mappings.view_csr_indexing
-        return None
+        return self.mappings.view_csr_indexing if self.mappings is not None else None
 
     @property
     def mapping_features(self):
@@ -1272,7 +1276,7 @@ class SameSettingImageData:
 
         # If not interpolating, set the mapping to the proper scale
         mappings = self.mappings if interpolate \
-            else self.mappings.rescale_images(scale)
+                else self.mappings.rescale_images(scale)
 
         # Index the features with/without interpolation
         if interpolate and scale != 1:
@@ -1340,9 +1344,9 @@ class SameSettingImageBatch(SameSettingImageData):
             hash_ref = image_data_list[0].settings_hash
             assert all(im.settings_hash == hash_ref
                        for im in image_data_list), \
-                f"All SameSettingImageData values for shared keys " \
-                f"{SameSettingImageData._shared_keys} must be the same " \
-                f"(except for the 'mask')."
+                    f"All SameSettingImageData values for shared keys " \
+                    f"{SameSettingImageData._shared_keys} must be the same " \
+                    f"(except for the 'mask')."
 
             for image_data in image_data_list[1:]:
 
@@ -1384,7 +1388,7 @@ class SameSettingImageBatch(SameSettingImageData):
             batch_dict[SameSettingImageData._map_key] = None
         else:
             batch_dict[SameSettingImageData._map_key] = \
-                ImageMappingBatch.from_csr_list(
+                    ImageMappingBatch.from_csr_list(
                     batch_dict[SameSettingImageData._map_key])
 
         # Initialize the batch from dict and keep track of the item
@@ -1423,7 +1427,7 @@ class ImageData:
 
     @property
     def num_views(self):
-        return sum([im.num_views for im in self])
+        return sum(im.num_views for im in self)
 
     @property
     def num_points(self):
@@ -1446,20 +1450,24 @@ class ImageData:
 
     def debug(self):
         assert isinstance(self._list, list), \
-            f"Expected a list of SameSettingImageData but got " \
-            f"{type(self._list)} instead."
-        assert all(isinstance(im, SameSettingImageData) for im in self), \
-            f"All list elements must be of type SameSettingImageData."
+                f"Expected a list of SameSettingImageData but got " \
+                f"{type(self._list)} instead."
+        assert all(
+            isinstance(im, SameSettingImageData) for im in self
+        ), "All list elements must be of type SameSettingImageData."
+
         # Remove any empty SameSettingImageData from the list
         #         self._list = [im for im in self._list if im.num_views > 0]
         assert all(im.num_points == self.num_points for im in self), \
-            "All SameSettingImageData mappings must refer to the same Data. " \
-            "Hence, all must have the same number of points in their mappings."
-        assert len(set([im.settings_hash for im in self])) == len(self), \
-            "All SameSettingImageData in ImageData must have " \
-            "different settings. SameSettingImageData with the same " \
-            "settings are expected to be grouped together in the same " \
+                "All SameSettingImageData mappings must refer to the same Data. " \
+                "Hence, all must have the same number of points in their mappings."
+        assert len({im.settings_hash for im in self}) == len(self), (
+            "All SameSettingImageData in ImageData must have "
+            "different settings. SameSettingImageData with the same "
+            "settings are expected to be grouped together in the same "
             "SameSettingImageData.)"
+        )
+
         for im in self:
             im.debug()
 
@@ -1562,7 +1570,7 @@ class ImageData:
             # Assuming the corresponding view features will be concatenated
             # in the same order as in self, compute the sorting indices to
             # arrange features wrt point indices, to facilitate CSR indexing
-            sorting = torch.cat([idx for idx in dense_idx_list]).argsort()
+            sorting = torch.cat(list(dense_idx_list)).argsort()
         except:
             print(f'self : {self}')
             print(f'len(self) : {len(self)}')
@@ -1579,13 +1587,9 @@ class ImageData:
         on CSR-formatted data. To sort concatenated view-level features,
         see 'view_cat_sorting'.
         """
-        # Assuming the features have been concatenated and sorted as
-        # aforementioned in 'view_cat_sorting' compute the new CSR
-        # indices to be used for feature view-pooling
-        view_csr_idx = torch.cat([
-            im.view_csr_indexing.unsqueeze(dim=1)
-            for im in self], dim=1).sum(dim=1)
-        return view_csr_idx
+        return torch.cat(
+            [im.view_csr_indexing.unsqueeze(dim=1) for im in self], dim=1
+        ).sum(dim=1)
 
     @property
     def mapping_features(self):
@@ -1620,10 +1624,7 @@ class ImageBatch(ImageData):
         assert all(isinstance(x, ImageData) for x in image_data_list)
 
         # Recover the list of unique hashes
-        hashes = list(set([
-            im.settings_hash
-            for il in image_data_list
-            for im in il]))
+        hashes = list({im.settings_hash for il in image_data_list for im in il})
         hashes_idx = {h: i for i, h in enumerate(hashes)}
 
         # Recover the number of points in each ImageData
@@ -1731,13 +1732,13 @@ class ImageMapping(CSRData):
         data.
         """
         assert point_ids.ndim == 1, \
-            'point_ids and image_ids must be 1D tensors'
+                'point_ids and image_ids must be 1D tensors'
         assert point_ids.shape == image_ids.shape, \
-            'point_ids and image_ids must have the same shape'
+                'point_ids and image_ids must have the same shape'
         assert point_ids.shape[0] == pixels.shape[0], \
-            'pixels and indices must have the same shape'
+                'pixels and indices must have the same shape'
         assert features is None or point_ids.shape[0] == features.shape[0], \
-            'point_ids and features must have the same shape'
+                'point_ids and features must have the same shape'
 
         # Sort by point_ids first, image_ids second
         idx_sort = lexargsort(point_ids, image_ids)
@@ -1838,9 +1839,8 @@ class ImageMapping(CSRData):
                 self.values.pop(-1)
             else:
                 self.values[2] = features.to(self.device)
-        else:
-            if features is not None:
-                self.values.append(features.to(self.device))
+        elif features is not None:
+            self.values.append(features.to(self.device))
                 # self.debug()
 
     @property
@@ -1881,8 +1881,7 @@ class ImageMapping(CSRData):
             self.values[1].pointers[1:] - self.values[1].pointers[:-1])
         idx_height = self.pixels[:, 1]
         idx_width = self.pixels[:, 0]
-        idx = (idx_batch.long(), ..., idx_height.long(), idx_width.long())
-        return idx
+        return idx_batch.long(), ..., idx_height.long(), idx_width.long()
 
     @property
     def atomic_csr_indexing(self):
@@ -1926,7 +1925,7 @@ class ImageMapping(CSRData):
         Returns a new ImageMapping object.
         """
         assert ratio >= 1, \
-            f"Invalid image subsampling ratio: {ratio}. Must be larger than 1."
+                f"Invalid image subsampling ratio: {ratio}. Must be larger than 1."
 
         # Create a copy of self
         out = self.clone()
@@ -1992,7 +1991,7 @@ class ImageMapping(CSRData):
         Returns a new ImageMapping object.
         """
         assert ratio >= 1, \
-            f"Invalid image upsampling ratio: {ratio}. Must be larger than 1."
+                f"Invalid image upsampling ratio: {ratio}. Must be larger than 1."
 
         # Create a copy of self
         out = self.clone()
@@ -2034,8 +2033,10 @@ class ImageMapping(CSRData):
         indices.
         """
         idx = tensor_idx(idx).to(self.device)
-        assert idx.unique().numel() == idx.shape[0], \
-            f"Index must not contain duplicates."
+        assert (
+            idx.unique().numel() == idx.shape[0]
+        ), "Index must not contain duplicates."
+
 
         # Rule out empty mappings
         if self.num_items == 0:

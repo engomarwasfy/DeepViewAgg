@@ -69,5 +69,4 @@ def _variance_estimator_sparse(r, pos, f, batch_idx):
         # weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
         grad_f = (f[x_idx] - f[y_idx]) ** 2
-    y = scatter_add(grad_f, y_idx, dim=0, dim_size=pos.size(0))
-    return y
+    return scatter_add(grad_f, y_idx, dim=0, dim_size=pos.size(0))

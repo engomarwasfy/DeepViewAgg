@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 ########################################################################################
 
 BASE_URL = "http://kaldir.vc.in.tum.de/scannet/"
-TOS_URL = BASE_URL + "ScanNet_TOS.pdf"
+TOS_URL = f"{BASE_URL}ScanNet_TOS.pdf"
 FILETYPES = [
     ".aggregation.json",
     ".sens",
@@ -170,7 +170,7 @@ def download_release(release_scans, out_dir, file_types, use_v1_sens):
             failed.append(scan_id)
     log.info("Downloaded ScanNet " + RELEASE_NAME + " release.")
     if len(failed):
-        log.warning("Failed downloads: {}".format(failed))
+        log.warning(f"Failed downloads: {failed}")
 
 
 def download_file(url, out_file):
@@ -185,8 +185,6 @@ def download_file(url, out_file):
         urllib.request.urlretrieve(url, out_file_tmp)
         # urllib.urlretrieve(url, out_file_tmp)
         os.rename(out_file_tmp, out_file)
-    else:
-        pass
         # log.warning("WARNING Skipping download of existing file " + out_file)
 
 
@@ -197,10 +195,11 @@ def download_scan(scan_id, out_dir, file_types, use_v1_sens):
     for ft in file_types:
         v1_sens = use_v1_sens and ft == ".sens"
         url = (
-            BASE_URL + RELEASE + "/" + scan_id + "/" + scan_id + ft
-            if not v1_sens
-            else BASE_URL + RELEASES[V1_IDX] + "/" + scan_id + "/" + scan_id + ft
+            BASE_URL + RELEASES[V1_IDX] + "/" + scan_id + "/" + scan_id + ft
+            if v1_sens
+            else BASE_URL + RELEASE + "/" + scan_id + "/" + scan_id + ft
         )
+
         out_file = out_dir + "/" + scan_id + ft
         download_file(url, out_file)
     # log.info("Downloaded scan " + scan_id)
@@ -238,7 +237,7 @@ def represents_int(s):
 
 def read_label_mapping(filename, label_from="raw_category", label_to="nyu40id"):
     assert osp.isfile(filename)
-    mapping = dict()
+    mapping = {}
     with open(filename) as csvfile:
         reader = csv.DictReader(csvfile, delimiter="\t")
         for row in reader:
@@ -300,12 +299,19 @@ def read_aggregation(filename):
 
 def read_axis_align_matrix(filename):
     lines = open(filename).readlines()
-    axis_align_matrix = None
-    for line in lines:
-        if "axisAlignment" in line:
-            axis_align_matrix = torch.Tensor([float(x) for x in line.rstrip().strip("axisAlignment = ").split(" ")]).reshape((4, 4))
-            break
-    return axis_align_matrix
+    return next(
+        (
+            torch.Tensor(
+                [
+                    float(x)
+                    for x in line.rstrip().strip("axisAlignment = ").split(" ")
+                ]
+            ).reshape((4, 4))
+            for line in lines
+            if "axisAlignment" in line
+        ),
+        None,
+    )
 
 
 def read_segmentation(filename):
@@ -492,10 +498,17 @@ class SensorData:
                 # Make sure the data is not corrupted. Some ScanNet
                 # poses contain 'inf' values, as referenced here:
                 # https://github.com/ScanNet/ScanNet/issues/9
-                corrupted = any([is_corrupted(x) for x in [
-                    self.extrinsic_color, self.extrinsic_depth,
-                    self.intrinsic_color, self.intrinsic_depth,
-                    frame.camera_to_world]])
+                corrupted = any(
+                    is_corrupted(x)
+                    for x in [
+                        self.extrinsic_color,
+                        self.extrinsic_depth,
+                        self.intrinsic_color,
+                        self.intrinsic_depth,
+                        frame.camera_to_world,
+                    ]
+                )
+
 
                 # i_offset is used to remember if corrupted files were
                 # skipped, so that we load the next non-corrupted ones
@@ -516,7 +529,7 @@ class SensorData:
             if image_size is not None:
                 depth = cv2.resize(depth, (image_size[1], image_size[0]), interpolation=cv2.INTER_NEAREST)
             # imageio.imwrite(osp.join(output_path, str(f) + '.png'), depth)
-            with open(osp.join(output_path, str(f) + '.png'), 'wb') as f:  # write 16-bit
+            with open(osp.join(output_path, f'{str(f)}.png'), 'wb') as f:  # write 16-bit
                 writer = png.Writer(width=depth.shape[1], height=depth.shape[0], bitdepth=16)
                 depth = depth.reshape(-1, depth.shape[1]).tolist()
                 writer.write(f, depth)
@@ -530,7 +543,7 @@ class SensorData:
             color = self.frames[f].decompress_color(self.color_compression_type)
             if image_size is not None:
                 color = cv2.resize(color, (image_size[1], image_size[0]), interpolation=cv2.INTER_NEAREST)
-            imageio.imwrite(osp.join(output_path, str(f) + '.jpg'), color)
+            imageio.imwrite(osp.join(output_path, f'{str(f)}.jpg'), color)
 
     def save_mat_to_file(self, matrix, filename):
         with open(filename, 'w') as f:
@@ -543,7 +556,10 @@ class SensorData:
         if verbose:
             print(f'Exporting {len(self.frames) // frame_skip} camera poses to {output_path}')
         for f in range(0, len(self.frames), frame_skip):
-            self.save_mat_to_file(self.frames[f].camera_to_world, osp.join(output_path, str(f) + '.txt'))
+            self.save_mat_to_file(
+                self.frames[f].camera_to_world,
+                osp.join(output_path, f'{str(f)}.txt'),
+            )
 
     def export_intrinsics(self, output_path, verbose=False):
         if not osp.exists(output_path):
@@ -737,11 +753,16 @@ class Scannet(InMemoryDataset):
         if torch.is_tensor(id_scan):
             id_scan = int(id_scan.item())
         assert stage in self.SPLITS
-        mapping_idx_to_scan_names = getattr(self, "MAPPING_IDX_TO_SCAN_{}_NAMES".format(stage.upper()))
+        mapping_idx_to_scan_names = getattr(
+            self, f"MAPPING_IDX_TO_SCAN_{stage.upper()}_NAMES"
+        )
+
         scan_name = mapping_idx_to_scan_names[id_scan]
         path_to_raw_scan = osp.join(
-            self.processed_raw_paths[self.SPLITS.index(stage.lower())], "{}.pt".format(scan_name)
+            self.processed_raw_paths[self.SPLITS.index(stage.lower())],
+            f"{scan_name}.pt",
         )
+
         data = torch.load(path_to_raw_scan)
         data.scan_name = scan_name
         data.path_to_raw_scan = path_to_raw_scan
@@ -759,7 +780,10 @@ class Scannet(InMemoryDataset):
 
     @property
     def processed_raw_paths(self):
-        processed_raw_paths = [osp.join(self.processed_dir, "raw_{}".format(s)) for s in Scannet.SPLITS]
+        processed_raw_paths = [
+            osp.join(self.processed_dir, f"raw_{s}") for s in Scannet.SPLITS
+        ]
+
         for p in processed_raw_paths:
             if not osp.exists(p):
                 os.makedirs(p)
@@ -794,10 +818,12 @@ class Scannet(InMemoryDataset):
                 if file_type not in FILETYPES:
                     log.error("ERROR: Invalid file type: " + file_type)
                     return
-            file_types_test = []
-            for file_type in file_types:
-                if file_type in FILETYPES_TEST:
-                    file_types_test.append(file_type)
+            file_types_test = [
+                file_type
+                for file_type in file_types
+                if file_type in FILETYPES_TEST
+            ]
+
         download_label_map(self.raw_dir)
         log.info("WARNING: You are downloading all ScanNet " + RELEASE_NAME + " scans of type " + file_types[0])
         log.info(
@@ -846,8 +872,7 @@ class Scannet(InMemoryDataset):
         sens_file = osp.join(scannet_dir, scan_name, scan_name + ".sens")
         sens_dir = osp.join(scannet_dir, scan_name, 'sens')
 
-        data = {}
-        data["pos"] = torch.from_numpy(mesh_vertices[:, :3])
+        data = {"pos": torch.from_numpy(mesh_vertices[:, :3])}
         data["rgb"] = torch.from_numpy(mesh_vertices[:, 3:])
         if normalize_rgb:
             data["rgb"] /= 255.0
@@ -896,16 +921,14 @@ class Scannet(InMemoryDataset):
 
         # Subsample
         N = mesh_vertices.shape[0]
-        if max_num_point:
-            if N > max_num_point:
-                choices = np.random.choice(N, max_num_point, replace=False)
-                mesh_vertices = mesh_vertices[choices, :]
-                semantic_labels = semantic_labels[choices]
-                instance_labels = instance_labels[choices]
+        if max_num_point and N > max_num_point:
+            choices = np.random.choice(N, max_num_point, replace=False)
+            mesh_vertices = mesh_vertices[choices, :]
+            semantic_labels = semantic_labels[choices]
+            instance_labels = instance_labels[choices]
 
         # Build data container
-        data = {}
-        data["pos"] = torch.from_numpy(mesh_vertices[:, :3])
+        data = {"pos": torch.from_numpy(mesh_vertices[:, :3])}
         data["rgb"] = torch.from_numpy(mesh_vertices[:, 3:])
         if normalize_rgb:
             data["rgb"] /= 255.0
@@ -933,17 +956,15 @@ class Scannet(InMemoryDataset):
     def read_from_metadata(self):
         metadata_path = osp.join(self.raw_dir, "metadata")
         self.label_map_file = osp.join(metadata_path, LABEL_MAP_FILE)
-        split_files = ["scannetv2_{}.txt".format(s) for s in Scannet.SPLITS]
+        split_files = [f"scannetv2_{s}.txt" for s in Scannet.SPLITS]
         self.scan_names = []
         for sf in split_files:
-            f = open(osp.join(metadata_path, sf))
-            self.scan_names.append(sorted([line.rstrip() for line in f]))
-            f.close()
-
+            with open(osp.join(metadata_path, sf)) as f:
+                self.scan_names.append(sorted([line.rstrip() for line in f]))
         for idx_split, split in enumerate(Scannet.SPLITS):
             # self.scan_names[idx_split] = self.scan_names[idx_split][:5]  # to test on mini dataset
-            idx_mapping = {idx: scan_name for idx, scan_name in enumerate(self.scan_names[idx_split])}
-            setattr(self, "MAPPING_IDX_TO_SCAN_{}_NAMES".format(split.upper()), idx_mapping)
+            idx_mapping = dict(enumerate(self.scan_names[idx_split]))
+            setattr(self, f"MAPPING_IDX_TO_SCAN_{split.upper()}_NAMES", idx_mapping)
 
     @staticmethod
     def process_func(
@@ -987,7 +1008,7 @@ class Scannet(InMemoryDataset):
                 frame_pose,
                 frame_intrinsics,
                 frame_skip)
-        log.info("{}/{}| scan_name: {}, data: {}".format(id_scan, total, scan_name, data))
+        log.info(f"{id_scan}/{total}| scan_name: {scan_name}, data: {data}")
 
         data["id_scan"] = torch.tensor([id_scan])
         return cT.SaveOriginalPosId()(data)
@@ -999,7 +1020,10 @@ class Scannet(InMemoryDataset):
 
         for i, (scan_names, split) in enumerate(zip(self.scan_names, self.SPLITS)):
             if not osp.exists(self.processed_paths[i]):
-                mapping_idx_to_scan_names = getattr(self, "MAPPING_IDX_TO_SCAN_{}_NAMES".format(split.upper()))
+                mapping_idx_to_scan_names = getattr(
+                    self, f"MAPPING_IDX_TO_SCAN_{split.upper()}_NAMES"
+                )
+
                 scannet_dir = osp.join(self.raw_dir, "scans" if split in ["train", "val"] else "scans_test")
                 total = len(scan_names)
                 args = [
@@ -1034,13 +1058,13 @@ class Scannet(InMemoryDataset):
                 for data in datas:
                     id_scan = int(data.id_scan.item())
                     scan_name = mapping_idx_to_scan_names[id_scan]
-                    path_to_raw_scan = osp.join(self.processed_raw_paths[i], "{}.pt".format(scan_name))
+                    path_to_raw_scan = osp.join(self.processed_raw_paths[i], f"{scan_name}.pt")
                     torch.save(data, path_to_raw_scan)
 
                 if self.pre_transform:
                     datas = [self.pre_transform(data) for data in datas]
 
-                log.info("SAVING TO {}".format(self.processed_paths[i]))
+                log.info(f"SAVING TO {self.processed_paths[i]}")
                 torch.save(self.collate(datas), self.processed_paths[i])
 
     def _remap_labels(self, semantic_label):
@@ -1062,7 +1086,7 @@ class Scannet(InMemoryDataset):
         return new_labels
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, len(self))
+        return f"{self.__class__.__name__}({len(self)})"
 
     # TODO: this overwrites `torch_geometric.data.InMemoryDataset.indices`
     #  so that we can handle `torch_geometric>=1.6`. This dirty trick, in

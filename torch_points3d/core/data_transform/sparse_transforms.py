@@ -55,6 +55,4 @@ class RandomCoordsFlip(object):
         return data
 
     def __repr__(self):
-        return "{}(flip_axis={}, prob={}, is_temporal={})".format(
-            self.__class__.__name__, self._horz_axes, self._p, self._is_temporal
-        )
+        return f"{self.__class__.__name__}(flip_axis={self._horz_axes}, prob={self._p}, is_temporal={self._is_temporal})"

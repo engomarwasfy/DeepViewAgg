@@ -24,7 +24,7 @@ def readYAMLFile(fileName):
     ret = {}
     skip_lines = 1  # Skip the first line which says "%YAML:1.0". Or replace it with "%YAML 1.0"
     with open(fileName) as fin:
-        for i in range(skip_lines):
+        for _ in range(skip_lines):
             fin.readline()
         yamlFileOut = fin.read()
         myRe = re.compile(r":([^ ])")  # Add space after ":", if it doesn't exist. Python yaml requirement
@@ -76,7 +76,7 @@ def read_kitti360_image_sequence(root, sequence, cam_id=0, size=None):
     paths = paths[idx]
     n_images = poses.shape[0]
     if n_images == 0:
-        raise ValueError(f'Could not fin any image')
+        raise ValueError('Could not fin any image')
 
     # Intrinsic parameters
     if not fisheye:
@@ -113,18 +113,34 @@ def read_kitti360_image_sequence(root, sequence, cam_id=0, size=None):
     # Recover the image positions from the extrinsic matrix
     T = cam_to_world[:, :3, 3]
 
-    # Gather the sequence image information in a `SameSettingImageData`
-    if not fisheye:
-        images = SameSettingImageData(
-            ref_size=size, proj_upscale=1, path=paths, pos=T, fx=fx, fy=fy,
-            mx=mx, my=my, extrinsic=cam_to_world)
-    else:
-        images = SameSettingImageData(
-            ref_size=size, proj_upscale=1, path=paths, pos=T, xi=xi, k1=k1,
-            k2=k2, gamma1=gamma1, gamma2=gamma2, u0=u0, v0=v0,
-            extrinsic=cam_to_world)
-
-    return images
+    return (
+        SameSettingImageData(
+            ref_size=size,
+            proj_upscale=1,
+            path=paths,
+            pos=T,
+            xi=xi,
+            k1=k1,
+            k2=k2,
+            gamma1=gamma1,
+            gamma2=gamma2,
+            u0=u0,
+            v0=v0,
+            extrinsic=cam_to_world,
+        )
+        if fisheye
+        else SameSettingImageData(
+            ref_size=size,
+            proj_upscale=1,
+            path=paths,
+            pos=T,
+            fx=fx,
+            fy=fy,
+            mx=mx,
+            my=my,
+            extrinsic=cam_to_world,
+        )
+    )
 
 
 def load_intrinsics_perspective(intrinsic_file, cam_id=0):
@@ -368,7 +384,7 @@ class KITTI360CylinderMM(KITTI360Cylinder):
     @property
     def sequences(self):
         """Sequences present in `self.windows`."""
-        return sorted(list(set([w.split('/')[0] for w in self.windows])))
+        return sorted(list({w.split('/')[0] for w in self.windows}))
 
     @property
     def image_paths(self):
@@ -512,7 +528,7 @@ class KITTI360CylinderMM(KITTI360Cylinder):
         for wsi in tq(zip(self.paths, self.sampling_paths, self.image_paths)):
 
             # If required files exist, skip processing
-            if all([osp.exists(p) for p in wsi]):
+            if all(osp.exists(p) for p in wsi):
                 continue
 
             # Recover the path for each type of data
@@ -528,7 +544,7 @@ class KITTI360CylinderMM(KITTI360Cylinder):
 
             # Extract useful information from <path>
             split, modality, sequence_name, window_name = \
-                osp.splitext(window_path)[0].split('/')[-4:]
+                    osp.splitext(window_path)[0].split('/')[-4:]
 
             # 3D preprocessing of window point cloud. We take the
             # opportunity that this step loads the window in memory to
@@ -638,7 +654,7 @@ class KITTI360DatasetMM(BaseDatasetMM):
         super().__init__(dataset_opt)
 
         cls = MiniKITTI360CylinderMM if dataset_opt.get('mini', False) \
-            else KITTI360CylinderMM
+                else KITTI360CylinderMM
         radius = dataset_opt.get('radius')
         train_sample_res = dataset_opt.get('train_sample_res', radius / 20)
         eval_sample_res = dataset_opt.get('eval_sample_res', radius)
@@ -660,11 +676,13 @@ class KITTI360DatasetMM(BaseDatasetMM):
             image_size=image_size,
             voxel=voxel,
             sample_per_epoch=sample_per_epoch,
-            split='train' if not train_is_trainval else 'trainval',
+            split='trainval' if train_is_trainval else 'train',
             pre_transform=self.pre_transform,
             transform=self.train_transform,
             pre_transform_image=self.pre_transform_image,
-            transform_image=self.train_transform_image)
+            transform_image=self.train_transform_image,
+        )
+
 
         self.val_dataset = cls(
             self._data_path,
@@ -681,7 +699,7 @@ class KITTI360DatasetMM(BaseDatasetMM):
             transform=self.val_transform,
             pre_transform_image=self.pre_transform_image,
             transform_image=self.val_transform_image)
-        
+
         # KITTI360 only provides about 10% of the images in the test set
         # images (withheld images are for novel view synthesis evaluation).
         # For this reason, the we should keep 10 times more images from

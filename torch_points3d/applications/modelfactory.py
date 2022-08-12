@@ -18,7 +18,9 @@ class ModelFactory:
 
     @staticmethod
     def raise_enum_error(arg_name, arg_value, options):
-        raise Exception("The provided argument {} with value {} isn't within {}".format(arg_name, arg_value, options))
+        raise Exception(
+            f"The provided argument {arg_name} with value {arg_value} isn't within {options}"
+        )
 
     def __init__(
         self,
@@ -90,10 +92,9 @@ class ModelFactory:
 
         # user defined contants to subsitute
         if "define_constants" in model_config.keys():
-            constants.update(dict(model_config.define_constants))
+            constants |= dict(model_config.define_constants)
             define_constants = model_config.define_constants
             for key in define_constants.keys():
-                value = kwargs.get(key)
-                if value:
+                if value := kwargs.get(key):
                     constants[key] = value
         resolve(model_config, constants)

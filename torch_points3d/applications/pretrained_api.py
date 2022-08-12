@@ -26,7 +26,7 @@ def download_file(url, out_file):
             os.makedirs(os.path.dirname(out_file))
         urllib.request.urlretrieve(url, out_file)
     else:
-        log.warning("WARNING: skipping download of existing file " + out_file)
+        log.warning(f"WARNING: skipping download of existing file {out_file}")
 
 
 class PretainedRegistry(object):
@@ -101,12 +101,11 @@ class PretainedRegistry(object):
             url = PretainedRegistry.MODELS.get(model_tag)
         else:
             raise Exception(
-                "model_tag {} doesn't exist within available models. Here is the list of pre-trained models {}".format(
-                    model_tag, PretainedRegistry.available_models()
-                )
+                f"model_tag {model_tag} doesn't exist within available models. Here is the list of pre-trained models {PretainedRegistry.available_models()}"
             )
 
-        checkpoint_name = model_tag + ".pt"
+
+        checkpoint_name = f"{model_tag}.pt"
         out_file = os.path.join(CHECKPOINT_DIR, checkpoint_name)
 
         if download:

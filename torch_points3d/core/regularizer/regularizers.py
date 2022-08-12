@@ -148,24 +148,19 @@ class GroupLassoRegularizer(_Regularizer):
         self.lambda_reg = lambda_reg
 
     def regularized_param(self, param_weights, reg_loss_function, group_name="input_group"):
-        if group_name == "input_group":
+        if group_name in ["input_group", "hidden_group"]:
             reg_loss_function += self.lambda_reg * GroupLassoRegularizer.__inputs_groups_reg(
                 layer_weights=param_weights
             )  # apply the group norm on the input value
-        elif group_name == "hidden_group":
-            reg_loss_function += self.lambda_reg * GroupLassoRegularizer.__inputs_groups_reg(
-                layer_weights=param_weights
-            )  # apply the group norm on every hidden layer
         elif group_name == "bias_group":
             reg_loss_function += self.lambda_reg * GroupLassoRegularizer.__bias_groups_reg(
                 bias_weights=param_weights
             )  # apply the group norm on the bias
         else:
             print(
-                "The group {} is not supported yet. Please try one of this: [input_group, hidden_group, bias_group]".format(
-                    group_name
-                )
+                f"The group {group_name} is not supported yet. Please try one of this: [input_group, hidden_group, bias_group]"
             )
+
         return reg_loss_function
 
     def regularized_all_param(self, reg_loss_function):
@@ -182,10 +177,7 @@ class GroupLassoRegularizer(_Regularizer):
 
     @staticmethod
     def __grouplasso_reg(groups, dim):
-        if dim == -1:
-            # We only have single group
-            return groups.norm(2)
-        return groups.norm(2, dim=dim).sum()
+        return groups.norm(2) if dim == -1 else groups.norm(2, dim=dim).sum()
 
     @staticmethod
     def __inputs_groups_reg(layer_weights):

@@ -14,5 +14,5 @@ class ComposeMultiModal(object):
         return args
 
     def __repr__(self):
-        args = ['    {},'.format(t) for t in self.transforms]
+        args = [f'    {t},' for t in self.transforms]
         return '{}([\n{}\n])'.format(self.__class__.__name__, '\n'.join(args))

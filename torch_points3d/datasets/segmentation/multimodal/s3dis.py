@@ -187,10 +187,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
 
     @property
     def center_labels(self):
-        if hasattr(self.data, "center_label"):
-            return self.data.center_label
-        else:
-            return None
+        return self.data.center_label if hasattr(self.data, "center_label") else None
 
     @property
     def raw_file_names(self):
@@ -342,7 +339,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                     #   - Area_2/hallway_11
                     #   - Area_5/hallway_6
                     if (area_num == 1 and room_name == 'hallway_11') or \
-                            (area_num == 4 and room_name == 'hallway_6'):
+                                (area_num == 4 and room_name == 'hallway_6'):
                         xy_center = (xyz[:, 0:2].max(dim=0)[0]
                                      + xyz[:, 0:2].min(dim=0)[0]) / 2
                         # 180° Z-rotation around the XY-center
@@ -360,7 +357,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                         data.instance_labels = instance_labels
 
                     if self.pre_filter is not None \
-                            and not self.pre_filter(data):
+                                and not self.pre_filter(data):
                         continue
 
                     data_list[area_num].append(data)
@@ -435,7 +432,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
                 # 'area_5a' and 'area_5b' and one of them requires
                 # specific treatment for pose reading
                 folders = [f"area_{i + 1}"] if i != 4 \
-                    else ["area_5a", "area_5b"]
+                        else ["area_5a", "area_5b"]
 
                 image_info_list = [
                     {'path': i_file, **read_s3dis_pose(p_file)}
@@ -491,8 +488,7 @@ class S3DISOriginalFusedMM(InMemoryDataset):
               f'splits for test_area=Area_{self.test_area}...')
 
         # Save test split preprocessed multimodal data
-        test_mm_data_list = tuple([x.pop(self.test_area - 1)
-                                   for x in mm_data_list])
+        test_mm_data_list = tuple(x.pop(self.test_area - 1) for x in mm_data_list)
         delattr(test_mm_data_list[0], 'is_val')
         torch.save(test_mm_data_list, self.processed_paths[2])
         del test_mm_data_list
@@ -639,14 +635,13 @@ class S3DISSphereMM(S3DISOriginalFusedMM):
             # Return a random spherical sample and the associated area
             # id
             return self._get_random()
-        else:
-            # For test and val datasets
-            # Return the precomputed sphere at idx and the associated
-            # area id
-            test_sphere = self._test_spheres[idx].clone()
-            i_area = test_sphere.area_id
-            delattr(test_sphere, 'area_id')
-            return i_area, test_sphere
+        # For test and val datasets
+        # Return the precomputed sphere at idx and the associated
+        # area id
+        test_sphere = self._test_spheres[idx].clone()
+        i_area = test_sphere.area_id
+        delattr(test_sphere, 'area_id')
+        return i_area, test_sphere
 
     def process(self):
         # We have to include this method, otherwise the parent class
@@ -757,8 +752,10 @@ class S3DISFusedDataset(BaseDatasetMM):
         super().__init__(dataset_opt)
 
         sampling_format = dataset_opt.get('sampling_format', 'sphere')
-        assert sampling_format == 'sphere', \
-            f"Only sampling format 'sphere' is supported for now."
+        assert (
+            sampling_format == 'sphere'
+        ), "Only sampling format 'sphere' is supported for now."
+
 
         sample_per_epoch = dataset_opt.get('sample_per_epoch', 3000)
         radius = dataset_opt.get('radius', 2)
@@ -772,12 +769,14 @@ class S3DISFusedDataset(BaseDatasetMM):
             radius=radius,
             sample_res=train_sample_res,
             test_area=self.dataset_opt.fold,
-            split="train" if not train_is_trainval else "trainval",
+            split="trainval" if train_is_trainval else "train",
             pre_collate_transform=self.pre_collate_transform,
             transform=self.train_transform,
             pre_transform_image=self.pre_transform_image,
             transform_image=self.train_transform_image,
-            img_ref_size=self.dataset_opt.resolution_2d)
+            img_ref_size=self.dataset_opt.resolution_2d,
+        )
+
 
         self.val_dataset = S3DISSphereMM(
             self._data_path,

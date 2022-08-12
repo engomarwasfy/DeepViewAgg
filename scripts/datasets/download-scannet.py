@@ -20,7 +20,7 @@ else:
     from urllib import urlopen
 
 BASE_URL = 'http://kaldir.vc.in.tum.de/scannet/'
-TOS_URL = BASE_URL + 'ScanNet_TOS.pdf'
+TOS_URL = f'{BASE_URL}ScanNet_TOS.pdf'
 FILETYPES = ['.aggregation.json', '.sens', '.txt', '_vh_clean.ply', '_vh_clean_2.0.010000.segs.json', '_vh_clean_2.ply', '_vh_clean.segs.json', '_vh_clean.aggregation.json', '_vh_clean_2.labels.ply', '_2d-instance.zip', '_2d-instance-filt.zip', '_2d-label.zip', '_2d-label-filt.zip']
 FILETYPES_TEST = ['.sens', '.txt', '_vh_clean.ply', '_vh_clean_2.ply']
 PREPROCESSED_FRAMES_FILE = ['scannet_frames_25k.zip', '5.6GB']
@@ -50,11 +50,11 @@ def get_release_scans(release_file):
 def download_release(release_scans, out_dir, file_types, use_v1_sens):
     if len(release_scans) == 0:
         return
-    print('Downloading ScanNet ' + RELEASE_NAME + ' release to ' + out_dir + '...')
+    print(f'Downloading ScanNet {RELEASE_NAME} release to {out_dir}...')
     for scan_id in release_scans:
         scan_out_dir = os.path.join(out_dir, scan_id)
         download_scan(scan_id, scan_out_dir, file_types, use_v1_sens)
-    print('Downloaded ScanNet ' + RELEASE_NAME + ' release.')
+    print(f'Downloaded ScanNet {RELEASE_NAME} release.')
 
 
 def download_file(url, out_file):
@@ -70,19 +70,30 @@ def download_file(url, out_file):
         #urllib.urlretrieve(url, out_file_tmp)
         os.rename(out_file_tmp, out_file)
     else:
-        print('WARNING: skipping download of existing file ' + out_file)
+        print(f'WARNING: skipping download of existing file {out_file}')
 
 def download_scan(scan_id, out_dir, file_types, use_v1_sens):
     try:
-        print('Downloading ScanNet ' + RELEASE_NAME + ' scan ' + scan_id + ' ...')
+        print(f'Downloading ScanNet {RELEASE_NAME} scan {scan_id} ...')
         if not os.path.isdir(out_dir):
             os.makedirs(out_dir)
         for ft in file_types:
             v1_sens = use_v1_sens and ft == '.sens'
-            url = BASE_URL + RELEASE + '/' + scan_id + '/' + scan_id + ft if not v1_sens else BASE_URL + RELEASES[V1_IDX] + '/' + scan_id + '/' + scan_id + ft
-            out_file = out_dir + '/' + scan_id + ft
+            url = (
+                BASE_URL
+                + RELEASES[V1_IDX]
+                + '/'
+                + scan_id
+                + '/'
+                + scan_id
+                + ft
+                if v1_sens
+                else BASE_URL + RELEASE + '/' + scan_id + '/' + scan_id + ft
+            )
+
+            out_file = f'{out_dir}/{scan_id}{ft}'
             download_file(url, out_file)
-        print('Downloaded scan ' + scan_id)
+        print(f'Downloaded scan {scan_id}')
     except:
         FAILED_DOWNLOAD.append(scan_id)
 
@@ -105,7 +116,7 @@ def download_task_data(out_dir):
 
 
 def download_label_map(out_dir):
-    print('Downloading ScanNet ' + RELEASE_NAME + ' label mapping file...')
+    print(f'Downloading ScanNet {RELEASE_NAME} label mapping file...')
     files = [ LABEL_MAP_FILE ]
     for file in files:
         url = BASE_URL + RELEASE_TASKS + '/' + file
@@ -114,7 +125,7 @@ def download_label_map(out_dir):
         if not os.path.isdir(localdir):
           os.makedirs(localdir)
         download_file(url, localpath)
-    print('Downloaded ScanNet ' + RELEASE_NAME + ' label mapping file.')
+    print(f'Downloaded ScanNet {RELEASE_NAME} label mapping file.')
 
 
 def main():
@@ -124,8 +135,18 @@ def main():
     parser.add_argument('--label_map', action='store_true', help='download label map file')
     parser.add_argument('--v1', action='store_true', help='download ScanNet v1 instead of v2')
     parser.add_argument('--id', help='specific scan id to download')
-    parser.add_argument('--preprocessed_frames', action='store_true', help='download preprocessed subset of ScanNet frames (' + PREPROCESSED_FRAMES_FILE[1] + ')')
-    parser.add_argument('--test_frames_2d', action='store_true', help='download 2D test frames (' + TEST_FRAMES_FILE[1] + '; also included with whole dataset download)')
+    parser.add_argument(
+        '--preprocessed_frames',
+        action='store_true',
+        help=f'download preprocessed subset of ScanNet frames ({PREPROCESSED_FRAMES_FILE[1]})',
+    )
+
+    parser.add_argument(
+        '--test_frames_2d',
+        action='store_true',
+        help=f'download 2D test frames ({TEST_FRAMES_FILE[1]}; also included with whole dataset download)',
+    )
+
     parser.add_argument('--types', nargs='+', help='specific file type to download (.aggregation.json, .sens, .txt, _vh_clean.ply, _vh_clean_2.0.010000.segs.json, _vh_clean_2.ply, _vh_clean.segs.json, _vh_clean.aggregation.json, _vh_clean_2.labels.ply, _2d-instance.zip, _2d-instance-filt.zip, _2d-label.zip, _2d-label-filt.zip)')
     args = parser.parse_args()
 
@@ -159,12 +180,14 @@ def main():
         file_types = args.types
         for file_type in file_types:
             if file_type not in FILETYPES:
-                print('ERROR: Invalid file type: ' + file_type)
+                print(f'ERROR: Invalid file type: {file_type}')
                 return
-        file_types_test = []
-        for file_type in file_types:
-            if file_type not in FILETYPES_TEST:
-                file_types_test.append(file_type)
+        file_types_test = [
+            file_type
+            for file_type in file_types
+            if file_type not in FILETYPES_TEST
+        ]
+
     if args.task_data:  # download task data
         download_task_data(out_dir_tasks)
     elif args.label_map:  # download label map file
@@ -172,21 +195,32 @@ def main():
     elif args.preprocessed_frames:  # download preprocessed scannet_frames_25k.zip file
         if args.v1:
             print('ERROR: Preprocessed frames only available for ScanNet v2')
-        print('You are downloading the preprocessed subset of frames ' + PREPROCESSED_FRAMES_FILE[0] + ' which requires ' + PREPROCESSED_FRAMES_FILE[1] + ' of space.')
+        print(
+            f'You are downloading the preprocessed subset of frames {PREPROCESSED_FRAMES_FILE[0]} which requires {PREPROCESSED_FRAMES_FILE[1]} of space.'
+        )
+
         download_file(os.path.join(BASE_URL, RELEASE_TASKS, PREPROCESSED_FRAMES_FILE[0]), os.path.join(out_dir_tasks, PREPROCESSED_FRAMES_FILE[0]))
     elif args.test_frames_2d:  # download test scannet_frames_test.zip file
         if args.v1:
             print('ERROR: 2D test frames only available for ScanNet v2')
-        print('You are downloading the 2D test set ' + TEST_FRAMES_FILE[0] + ' which requires ' + TEST_FRAMES_FILE[1] + ' of space.')
+        print(
+            f'You are downloading the 2D test set {TEST_FRAMES_FILE[0]} which requires {TEST_FRAMES_FILE[1]} of space.'
+        )
+
         download_file(os.path.join(BASE_URL, RELEASE_TASKS, TEST_FRAMES_FILE[0]), os.path.join(out_dir_tasks, TEST_FRAMES_FILE[0]))
     elif args.id:  # download single scan
         scan_id = args.id
         is_test_scan = scan_id in release_test_scans
         if scan_id not in release_scans and (not is_test_scan or args.v1):
-            print('ERROR: Invalid scan id: ' + scan_id)
+            print(f'ERROR: Invalid scan id: {scan_id}')
         else:
-            out_dir = os.path.join(out_dir_scans, scan_id) if not is_test_scan else os.path.join(out_dir_test_scans, scan_id)
-            scan_file_types = file_types if not is_test_scan else file_types_test
+            out_dir = (
+                os.path.join(out_dir_test_scans, scan_id)
+                if is_test_scan
+                else os.path.join(out_dir_scans, scan_id)
+            )
+
+            scan_file_types = file_types_test if is_test_scan else file_types
             use_v1_sens = not is_test_scan
             if not is_test_scan and not args.v1 and '.sens' in scan_file_types:
                 print('Note: ScanNet v2 uses the same .sens files as ScanNet v1: Press \'n\' to exclude downloading .sens files for each scan')
@@ -196,9 +230,15 @@ def main():
             download_scan(scan_id, out_dir, scan_file_types, use_v1_sens)
     else:  # download entire release
         if len(file_types) == len(FILETYPES):
-            print('WARNING: You are downloading the entire ScanNet ' + RELEASE_NAME + ' release which requires ' + RELEASE_SIZE + ' of space.')
+            print(
+                f'WARNING: You are downloading the entire ScanNet {RELEASE_NAME} release which requires {RELEASE_SIZE} of space.'
+            )
+
         else:
-            print('WARNING: You are downloading all ScanNet ' + RELEASE_NAME + ' scans of type ' + file_types[0])
+            print(
+                f'WARNING: You are downloading all ScanNet {RELEASE_NAME} scans of type {file_types[0]}'
+            )
+
         print('Note that existing scan directories will be skipped. Delete partially downloaded directories to re-download.')
         print('***')
         print('Press any key to continue, or CTRL-C to exit.')

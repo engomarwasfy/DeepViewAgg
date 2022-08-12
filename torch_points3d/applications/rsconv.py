@@ -50,7 +50,7 @@ class RSConvFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(PATH_TO_CONFIG, "unet_{}.yaml".format(self.num_layers))
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"unet_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -60,7 +60,7 @@ class RSConvFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(PATH_TO_CONFIG, "encoder_{}.yaml".format(self.num_layers))
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"encoder_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -101,10 +101,7 @@ class RSConvBase(UnwrappedUnetBasedModel):
         """
         assert len(data.pos.shape) == 3
         data = data.to(self.device)
-        if data.x is not None:
-            data.x = data.x.transpose(1, 2).contiguous()
-        else:
-            data.x = None
+        data.x = data.x.transpose(1, 2).contiguous() if data.x is not None else None
         self.input = data
 
 
@@ -172,12 +169,10 @@ class RSConvUnet(RSConvBase):
                 pos -- Points [B, N, 3]
         """
         self._set_input(data)
-        stack_down = []
         queue_up = queue.Queue()
 
         data = self.input
-        stack_down.append(data)
-
+        stack_down = [data]
         for i in range(len(self.down_modules) - 1):
             data = self.down_modules[i](data)
             stack_down.append(data)
@@ -198,10 +193,7 @@ class RSConvUnet(RSConvBase):
             [data.x, data_inner.x.repeat(1, 1, data.x.shape[-1]), data_inner_2.x.repeat(1, 1, data.x.shape[-1])], dim=1
         )
 
-        if self.has_mlp_head:
-            data.x = self.mlp(last_feature)
-        else:
-            data.x = last_feature
+        data.x = self.mlp(last_feature) if self.has_mlp_head else last_feature
         for key, value in sampling_ids.items():
             setattr(data, key, value)
         return data
