@@ -122,14 +122,14 @@ class ScannetObjectDetection(Scannet):
 
         # Keep only boxes with valid ids
         num_instances = len(instance_classes)
-        target_bboxes_mask[0:num_instances] = True
+        target_bboxes_mask[:num_instances] = True
 
         # Set box semantic label
         target_bboxes_semcls = np.zeros((self.MAX_NUM_OBJ))
-        target_bboxes_semcls[0:num_instances] = instance_classes
+        target_bboxes_semcls[:num_instances] = instance_classes
 
         # Set size residual and box centres
-        size_classes[0:num_instances] = instance_classes
+        size_classes[:num_instances] = instance_classes
         if num_instances > 0:
             box_sizes = torch.stack(box_sizes)
             centers = torch.stack(centers)

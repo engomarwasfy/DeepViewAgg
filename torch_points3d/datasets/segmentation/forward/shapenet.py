@@ -35,7 +35,7 @@ class _ForwardShapenet(torch.utils.data.Dataset):
         self._include_normals = include_normals
         assert os.path.exists(self._path)
         if self.__len__() == 0:
-            raise ValueError("Empty folder %s" % path)
+            raise ValueError(f"Empty folder {path}")
 
     def __len__(self):
         return len(self._files)
@@ -44,10 +44,7 @@ class _ForwardShapenet(torch.utils.data.Dataset):
         raw = read_txt_array(filename)
         pos = raw[:, :3]
         x = raw[:, 3:6]
-        if raw.shape[1] == 7:
-            y = raw[:, 6].type(torch.long)
-        else:
-            y = None
+        y = raw[:, 6].type(torch.long) if raw.shape[1] == 7 else None
         return Data(pos=pos, x=x, y=y)
 
     def get_raw(self, index):
@@ -58,9 +55,7 @@ class _ForwardShapenet(torch.utils.data.Dataset):
     @property
     def num_features(self):
         feats = self[0].x
-        if feats is not None:
-            return feats.shape[-1]
-        return 0
+        return feats.shape[-1] if feats is not None else 0
 
     def get_filename(self, index):
         return os.path.basename(self._files[index])
@@ -83,10 +78,9 @@ class ForwardShapenetDataset(BaseDataset):
         forward_category = dataset_opt.forward_category
         if not isinstance(forward_category, str):
             raise ValueError(
-                "dataset_opt.forward_category is not set or is not a string. Current value: {}".format(
-                    dataset_opt.forward_category
-                )
+                f"dataset_opt.forward_category is not set or is not a string. Current value: {dataset_opt.forward_category}"
             )
+
         self._train_categories = dataset_opt.category
         if not is_list(self._train_categories):
             self._train_categories = [self._train_categories]
@@ -99,15 +93,13 @@ class ForwardShapenetDataset(BaseDataset):
                 break
         if self._cat_idx is None:
             raise ValueError(
-                "Cannot run an inference on category {} with a network trained on {}".format(
-                    forward_category, self._train_categories
-                )
+                f"Cannot run an inference on category {forward_category} with a network trained on {self._train_categories}"
             )
+
         log.info(
-            "Running an inference on category {} with a network trained on {}".format(
-                forward_category, self._train_categories
-            )
+            f"Running an inference on category {forward_category} with a network trained on {self._train_categories}"
         )
+
 
         self._data_path = dataset_opt.dataroot
         # include_normals = dataset_opt.include_normals if dataset_opt.include_normals else True
@@ -159,10 +151,7 @@ class ForwardShapenetDataset(BaseDataset):
 
     @property
     def class_to_segments(self):
-        classes_to_segment = {}
-        for key in self._train_categories:
-            classes_to_segment[key] = ShapeNet.seg_classes[key]
-        return classes_to_segment
+        return {key: ShapeNet.seg_classes[key] for key in self._train_categories}
 
     @property
     def num_classes(self):

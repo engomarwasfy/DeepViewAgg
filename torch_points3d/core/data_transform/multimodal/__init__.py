@@ -15,15 +15,10 @@ def instantiate_multimodal_transform(transform_option, attr="transform"):
     """
     tr_name = getattr(transform_option, attr, None)
     tr_params = getattr(transform_option, 'params', None)
-    cls = getattr(_custom_multimodal_transforms, tr_name, None)
-
-    if not cls:
+    if cls := getattr(_custom_multimodal_transforms, tr_name, None):
+        return cls(**tr_params) if tr_params else cls()
+    else:
         raise ValueError(f"Multimodal transform {tr_name} is nowhere to be found")
-
-    if tr_params:
-        return cls(**tr_params)
-
-    return cls()
 
 
 def instantiate_multimodal_transforms(transform_options):
@@ -33,7 +28,9 @@ def instantiate_multimodal_transforms(transform_options):
             size: 0.01
     - transform: NormaliseScale
     """
-    transforms = []
-    for transform in transform_options:
-        transforms.append(instantiate_multimodal_transform(transform))
+    transforms = [
+        instantiate_multimodal_transform(transform)
+        for transform in transform_options
+    ]
+
     return ComposeMultiModal(transforms)

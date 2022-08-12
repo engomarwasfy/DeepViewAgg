@@ -71,13 +71,11 @@ def read_variable(fid, name, M, N):
         return None
 
     # fill matrix
-    line = line.replace('%s:' % name, '')
+    line = line.replace(f'{name}:', '')
     line = line.split()
     assert (len(line) == M * N)
     line = [float(x) for x in line]
-    mat = np.array(line).reshape(M, N)
-
-    return mat
+    return np.array(line).reshape(M, N)
 
 
 ########################################################################
@@ -301,8 +299,9 @@ class KITTI360Cylinder(InMemoryDataset):
             # be performed
             if sampling['labels'] is None:
                 raise ValueError(
-                    f'Cannot do class-balanced random sampling if data has no '
-                    f'labels. Please set sample_per_epoch=0 for test data.')
+                    'Cannot do class-balanced random sampling if data has no labels. Please set sample_per_epoch=0 for test data.'
+                )
+
 
             # Save the label counts for each window sampling. Cylinders
             # whose center label is IGNORE will not be sampled
@@ -315,11 +314,11 @@ class KITTI360Cylinder(InMemoryDataset):
 
         if self.is_random:
             assert self._label_counts.sum() > 0, \
-                'The dataset has no sampling centers with relevant classes, ' \
-                'check that your data has labels, that they follow the ' \
-                'nomenclature defined for KITTI360, that your dataset uses ' \
-                'enough windows and has reasonable downsampling and ' \
-                'cylinder sampling resolutions.'
+                    'The dataset has no sampling centers with relevant classes, ' \
+                    'check that your data has labels, that they follow the ' \
+                    'nomenclature defined for KITTI360, that your dataset uses ' \
+                    'enough windows and has reasonable downsampling and ' \
+                    'cylinder sampling resolutions.'
 
         # Initialize the window buffer that will take care of loading
         # and dropping windows in memory
@@ -505,8 +504,7 @@ class KITTI360Cylinder(InMemoryDataset):
             f'{getattr(datetime.now(), x)}'
             for x in ['hour', 'minute', 'second']])
         submission_name = f'{date}_{time}'
-        path = osp.join(submissions_dir, submission_name)
-        return path
+        return osp.join(submissions_dir, submission_name)
 
     def download(self):
         self.download_warning()
@@ -559,7 +557,7 @@ class KITTI360Cylinder(InMemoryDataset):
 
         # Extract useful information from <path>
         split, modality, sequence_name, window_name = \
-            osp.splitext(window_path)[0].split('/')[-4:]
+                osp.splitext(window_path)[0].split('/')[-4:]
 
         # Process the window
         if not osp.exists(window_path):
@@ -574,8 +572,13 @@ class KITTI360Cylinder(InMemoryDataset):
 
             # Read the raw window data
             raw_window_path = osp.join(
-                self.raw_dir, 'data_3d_semantics', sequence_name, 'static',
-                window_name + '.ply')
+                self.raw_dir,
+                'data_3d_semantics',
+                sequence_name,
+                'static',
+                f'{window_name}.ply',
+            )
+
             data = read_kitti360_window(
                 raw_window_path, instance=self._keep_instance, remap=True)
             num_raw_points = data.num_nodes
@@ -826,8 +829,7 @@ class KITTI360Sampler(Sampler):
 
         # If the max_consecutive limit is respected, end here
         if (torch.bincount(windows) <= self.max_consecutive).all():
-            return iter([
-                (l, w) for l, w in zip(labels.tolist(), windows.tolist())])
+            return iter(list(zip(labels.tolist(), windows.tolist())))
 
         # Accumulate the samplings in same-window consecutive groups of
         # the max_consecutive or less. Store the
@@ -853,7 +855,7 @@ class KITTI360Sampler(Sampler):
         labels = labels[order]
         windows = windows[order]
 
-        return iter([(l, w) for l, w in zip(labels.tolist(), windows.tolist())])
+        return iter(list(zip(labels.tolist(), windows.tolist())))
 
     def __len__(self):
         return len(self.dataset)
@@ -875,7 +877,7 @@ class KITTI360Dataset(BaseDataset):
         super().__init__(dataset_opt)
 
         cls = MiniKITTI360Cylinder if dataset_opt.get('mini', False) \
-            else KITTI360Cylinder
+                else KITTI360Cylinder
         radius = dataset_opt.get('radius')
         train_sample_res = dataset_opt.get('train_sample_res', radius / 20)
         eval_sample_res = dataset_opt.get('eval_sample_res', radius)
@@ -889,9 +891,11 @@ class KITTI360Dataset(BaseDataset):
             sample_res=train_sample_res,
             keep_instance=keep_instance,
             sample_per_epoch=sample_per_epoch,
-            split='train' if not train_is_trainval else 'trainval',
+            split='trainval' if train_is_trainval else 'train',
             pre_transform=self.pre_transform,
-            transform=self.train_transform)
+            transform=self.train_transform,
+        )
+
 
         self.val_dataset = cls(
             self._data_path,

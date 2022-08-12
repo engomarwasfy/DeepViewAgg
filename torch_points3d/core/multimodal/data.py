@@ -134,9 +134,10 @@ class MMData(object):
 
     def __repr__(self):
         info = [f"    data = {self.data}"]
-        info = info + \
-           [f"    {mod} = {data_mod}"
-            for mod, data_mod in self.modalities.items()]
+        info += [
+            f"    {mod} = {data_mod}" for mod, data_mod in self.modalities.items()
+        ]
+
         info = '\n'.join(info)
         return f"{self.__class__.__name__}(\n{info}\n)"
 
@@ -179,11 +180,13 @@ class MMBatch(MMData):
     @staticmethod
     def from_mm_data_list(mm_data_list):
         assert isinstance(mm_data_list, list) and len(mm_data_list) > 0
-        assert all([isinstance(mm_data, MMData) for mm_data in mm_data_list])
-        assert all([set(mm_data.modalities.keys())
-                    == set(mm_data_list[0].modalities.keys())
-                    for mm_data in mm_data_list]), \
-            "All MMData in the list must have the same modalities."
+        assert all(isinstance(mm_data, MMData) for mm_data in mm_data_list)
+        assert all(
+            set(mm_data.modalities.keys())
+            == set(mm_data_list[0].modalities.keys())
+            for mm_data in mm_data_list
+        ), "All MMData in the list must have the same modalities."
+
 
         # Convert list of Data to Batch
         data = Batch.from_data_list(

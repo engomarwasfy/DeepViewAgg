@@ -61,8 +61,10 @@ class PointNet2Factory(ModelFactory):
             model_config = self._config
         else:
             path_to_model = os.path.join(
-                PATH_TO_CONFIG, "unet_{}_{}.yaml".format(self.num_layers, "ms" if self.kwargs["multiscale"] else "ss")
+                PATH_TO_CONFIG,
+                f'unet_{self.num_layers}_{"ms" if self.kwargs["multiscale"] else "ss"}.yaml',
             )
+
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -74,8 +76,9 @@ class PointNet2Factory(ModelFactory):
         else:
             path_to_model = os.path.join(
                 PATH_TO_CONFIG,
-                "encoder_{}_{}.yaml".format(self.num_layers, "ms" if self.kwargs["multiscale"] else "ss"),
+                f'encoder_{self.num_layers}_{"ms" if self.kwargs["multiscale"] else "ss"}.yaml',
             )
+
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -116,10 +119,7 @@ class BasePointnet2(UnwrappedUnetBasedModel):
         """
         assert len(data.pos.shape) == 3
         data = data.to(self.device)
-        if data.x is not None:
-            data.x = data.x.transpose(1, 2).contiguous()
-        else:
-            data.x = None
+        data.x = data.x.transpose(1, 2).contiguous() if data.x is not None else None
         self.input = data
 
 

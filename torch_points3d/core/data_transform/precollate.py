@@ -23,4 +23,4 @@ class NormalizeFeature(object):
         return data
 
     def __repr__(self):
-        return "{}(feature_name={}, standardize={})".format(self.__class__.__name__, self._feature_name, self._standardize)
+        return f"{self.__class__.__name__}(feature_name={self._feature_name}, standardize={self._standardize})"

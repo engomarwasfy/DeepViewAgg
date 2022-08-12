@@ -31,9 +31,9 @@ def get_dataset_class(dataset_config):
 
     if dataset_cls is None:
         raise NotImplementedError(
-            "In %s.py, there should be a subclass of BaseDataset with class name that matches %s in lowercase."
-            % (module, class_name)
+            f"In {module}.py, there should be a subclass of BaseDataset with class name that matches {class_name} in lowercase."
         )
+
     return dataset_cls
 
 
@@ -44,5 +44,4 @@ def instantiate_dataset(dataset_config) -> BaseDataset:
     and it is case-insensitive.
     """
     dataset_cls = get_dataset_class(dataset_config)
-    dataset = dataset_cls(dataset_config)
-    return dataset
+    return dataset_cls(dataset_config)

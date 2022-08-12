@@ -116,9 +116,10 @@ class Base3DMatch(Dataset):
         self.radius_patch = radius_patch
         self.pre_transform_patch = pre_transform_patch
         if mode not in self.dict_urls.keys():
-            raise RuntimeError('this mode {} does '
-                               'not exist'
-                               '(train_small|train_tiny|train|val|test)'.format(mode))
+            raise RuntimeError(
+                f'this mode {mode} does not exist(train_small|train_tiny|train|val|test)'
+            )
+
         super(Base3DMatch, self).__init__(root,
                                           transform,
                                           pre_transform,
@@ -144,9 +145,9 @@ class Base3DMatch(Dataset):
         # we download the raw RGBD file for the train and the validation data
         folder = osp.join(self.raw_dir, self.mode)
         if files_exist([folder]):  # pragma: no cover
-            log.warning("already downloaded {}".format(self.mode))
+            log.warning(f"already downloaded {self.mode}")
             return
-        log.info("Download elements in the file {}...".format(folder))
+        log.info(f"Download elements in the file {folder}...")
         for url in self.dict_urls[self.mode]:
             path = download_url(url, folder, self.verbose)
             extract_zip(path, folder, self.verbose)
@@ -162,7 +163,7 @@ class Base3DMatch(Dataset):
 
         print("Create fragment from RGBD frames...")
         if files_exist([osp.join(self.processed_dir, mod, 'raw_fragment')]):  # pragma: no cover
-            log.warning("the fragments on mode {} already exists".format(mod))
+            log.warning(f"the fragments on mode {mod} already exists")
             return
         for scene_path in os.listdir(osp.join(self.raw_dir, mod)):
             # TODO list the right sequences.
@@ -188,17 +189,18 @@ class Base3DMatch(Dataset):
                                           for f in os.listdir(frames_dir)
                                           if 'pose' in f and 'txt' in f])
                 # compute each fragment and save it
-                if(not self.is_fine):
+                if (not self.is_fine):
                     rgbd2fragment_rough(list_path_frames, path_intrinsic,
                                         list_path_trans, out_dir,
                                         self.num_frame_per_fragment,
                                         pre_transform=None)
                 else:
-                    assert len(list_path_frames) == len(list_path_trans), \
-                        log.error("For the sequence {},"
-                                  "the number of frame "
-                                  "and the number of "
-                                  "pose is different".format(frames_dir))
+                    assert len(list_path_frames) == len(
+                        list_path_trans
+                    ), log.error(
+                        f"For the sequence {frames_dir},the number of frame and the number of pose is different"
+                    )
+
                     rgbd2fragment_fine(list_path_frames,
                                        path_intrinsic,
                                        list_path_trans,
@@ -251,7 +253,7 @@ class Base3DMatch(Dataset):
             list_seq = sorted([f for f in os.listdir(osp.join(self.raw_dir, mod,
                                                               scene_path)) if 'seq' in f])
             for seq in list_seq:
-                log.info("{}, {}".format(scene_path, seq))
+                log.info(f"{scene_path}, {seq}")
                 fragment_dir = osp.join(self.processed_dir,
                                         mod, 'fragment',
                                         scene_path, seq)
@@ -305,17 +307,17 @@ class Base3DMatch(Dataset):
                 if(self.pre_transform_patch is not None):
                     data_source = self.pre_transform_patch(data_source)
                     data_target = self.pre_transform_patch(data_target)
-                if(self.pre_filter is not None):
-                    if(self.pre_filter(data_source) and self.pre_filter(data_target)):
+                if self.pre_filter is None:
+                    torch.save(data_source,
+                               osp.join(out_dir,
+                                        'patches_source{:06d}.pt'.format(idx)))
+                    torch.save(data_target,
+                               osp.join(out_dir,
+                                        'patches_target{:06d}.pt'.format(idx)))
+                    idx += 1
 
-                        torch.save(data_source,
-                                   osp.join(out_dir,
-                                            'patches_source{:06d}.pt'.format(idx)))
-                        torch.save(data_target,
-                                   osp.join(out_dir,
-                                            'patches_target{:06d}.pt'.format(idx)))
-                        idx += 1
-                else:
+                elif (self.pre_filter(data_source) and self.pre_filter(data_target)):
+
                     torch.save(data_source,
                                osp.join(out_dir,
                                         'patches_source{:06d}.pt'.format(idx)))
@@ -345,5 +347,4 @@ class Base3DMatch(Dataset):
         tuple, a  LongTensor or a BoolTensor, will return a subset of the
         dataset at the specified indices."""
 
-        data = self.get(idx)
-        return data
+        return self.get(idx)

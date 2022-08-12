@@ -17,7 +17,7 @@ class BaseModule(nn.Module):
         reproducibility.
         """
         model_parameters = filter(lambda p: p.requires_grad, self.parameters())
-        self._nb_params = sum([np.prod(p.size()) for p in model_parameters])
+        self._nb_params = sum(np.prod(p.size()) for p in model_parameters)
         return self._nb_params
 
 
@@ -63,7 +63,7 @@ class UnaryConv(BaseModule):
         return torch.matmul(features, self.weight)
 
     def __repr__(self):
-        return "UnaryConv {}".format(self.weight.shape)
+        return f"UnaryConv {self.weight.shape}"
 
 
 class MultiHeadClassifier(BaseModule):
@@ -153,7 +153,7 @@ class FastBatchNorm1d(BaseModule):
         elif x.dim() == 3:
             return self._forward_dense(x)
         else:
-            raise ValueError("Non supported number of dimensions {}".format(x.dim()))
+            raise ValueError(f"Non supported number of dimensions {x.dim()}")
 
 
 class Seq(nn.Sequential):

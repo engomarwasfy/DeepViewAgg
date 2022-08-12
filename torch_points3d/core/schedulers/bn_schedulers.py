@@ -35,7 +35,10 @@ def set_bn_momentum_default(bn_momentum):
 class BNMomentumScheduler(object):
     def __init__(self, model, bn_lambda, update_scheduler_on, last_epoch=-1, setter=set_bn_momentum_default):
         if not isinstance(model, nn.Module):
-            raise RuntimeError("Class '{}' is not a PyTorch nn Module".format(type(model).__name__))
+            raise RuntimeError(
+                f"Class '{type(model).__name__}' is not a PyTorch nn Module"
+            )
+
 
         self.model = model
         self.setter = setter
@@ -67,7 +70,7 @@ class BNMomentumScheduler(object):
         new_momemtum = self.bn_lambda(epoch)
         if self._current_momemtum != new_momemtum:
             self._current_momemtum = new_momemtum
-            log.info("Setting batchnorm momentum at {}".format(new_momemtum))
+            log.info(f"Setting batchnorm momentum at {new_momemtum}")
             self.model.apply(self.setter(new_momemtum))
 
     def state_dict(self):
@@ -81,9 +84,7 @@ class BNMomentumScheduler(object):
         self.current_momemtum = state_dict["current_momemtum"]
 
     def __repr__(self):
-        return "{}(base_momentum: {}, update_scheduler_on={})".format(
-            self.__class__.__name__, self._current_momemtum, self._update_scheduler_on
-        )
+        return f"{self.__class__.__name__}(base_momentum: {self._current_momemtum}, update_scheduler_on={self._update_scheduler_on})"
 
 
 def instantiate_bn_scheduler(model, bn_scheduler_opt):

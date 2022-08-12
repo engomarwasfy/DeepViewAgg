@@ -82,6 +82,4 @@ class PointNetForward(ModelInference):
         return data
 
     def __repr__(self):
-        return "{}(model: {}, transform: {})".format(
-            self.__class__.__name__, self.model.__class__.__name__, self.inference_transform
-        )
+        return f"{self.__class__.__name__}(model: {self.model.__class__.__name__}, transform: {self.inference_transform})"

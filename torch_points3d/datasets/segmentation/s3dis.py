@@ -105,8 +105,7 @@ VALIDATION_ROOMS = [
 
 def object_name_to_label(object_class):
     """convert from object name in S3DIS to an int"""
-    object_label = OBJECT_LABEL.get(object_class, OBJECT_LABEL["clutter"])
-    return object_label
+    return OBJECT_LABEL.get(object_class, OBJECT_LABEL["clutter"])
 
 
 def read_s3dis_format(
@@ -115,20 +114,20 @@ def read_s3dis_format(
 
     room_type = room_name.split("_")[0]
     room_label = ROOM_TYPES[room_type]
-    raw_path = osp.join(train_file, "{}.txt".format(room_name))
+    raw_path = osp.join(train_file, f"{room_name}.txt")
     if debug:
         reader = pd.read_csv(raw_path, delimiter="\n")
         RECOMMENDED = 6
         for idx, row in enumerate(reader.values):
             row = row[0].split(" ")
             if len(row) != RECOMMENDED:
-                log.info("1: {} row {}: {}".format(raw_path, idx, row))
+                log.info(f"1: {raw_path} row {idx}: {row}")
 
             try:
                 for r in row:
                     r = float(r)
             except:
-                log.info("2: {} row {}: {}".format(raw_path, idx, row))
+                log.info(f"2: {raw_path} row {idx}: {row}")
 
         return True
     else:
@@ -138,7 +137,7 @@ def read_s3dis_format(
             rgb = np.ascontiguousarray(room_ver[:, 3:6], dtype="uint8")
         except ValueError:
             rgb = np.zeros((room_ver.shape[0], 3), dtype="uint8")
-            log.warning("WARN - corrupted rgb data for file %s" % raw_path)
+            log.warning(f"WARN - corrupted rgb data for file {raw_path}")
         if not label_out:
             return xyz, rgb
         n_ver = len(room_ver)
@@ -152,7 +151,7 @@ def read_s3dis_format(
         for single_object in objects:
             object_name = os.path.splitext(os.path.basename(single_object))[0]
             if verbose:
-                log.debug("adding object " + str(i_object) + " : " + object_name)
+                log.debug(f"adding object {str(i_object)} : " + object_name)
             object_class = object_name.split("_")[0]
             object_label = object_name_to_label(object_class)
             obj_ver = pd.read_csv(single_object, sep=" ", header=None).values
@@ -294,10 +293,7 @@ class S3DISOriginalFused(InMemoryDataset):
 
     @property
     def center_labels(self):
-        if hasattr(self.data, "center_label"):
-            return self.data.center_label
-        else:
-            return None
+        return self.data.center_label if hasattr(self.data, "center_label") else None
 
     @property
     def raw_file_names(self):
@@ -316,10 +312,9 @@ class S3DISOriginalFused(InMemoryDataset):
     def processed_file_names(self):
         test_area = self.test_area
         return (
-            ["{}_{}.pt".format(s, test_area) for s in ["train", "val", "test", "trainval"]]
+            [f"{s}_{test_area}.pt" for s in ["train", "val", "test", "trainval"]]
             + self.raw_areas_paths
-            + [self.pre_processed_path]
-        )
+        ) + [self.pre_processed_path]
 
     @property
     def raw_test_data(self):
@@ -334,7 +329,10 @@ class S3DISOriginalFused(InMemoryDataset):
         if len(raw_folders) == 0:
             if not os.path.exists(osp.join(self.root, self.zip_name)):
                 log.info("WARNING: You are downloading S3DIS dataset")
-                log.info("Please, register yourself by filling up the form at {}".format(self.form_url))
+                log.info(
+                    f"Please, register yourself by filling up the form at {self.form_url}"
+                )
+
                 log.info("***")
                 log.info(
                     "Press any key to continue, or CTRL-C to exit. By continuing, you confirm filling up the form."
@@ -345,7 +343,8 @@ class S3DISOriginalFused(InMemoryDataset):
             shutil.rmtree(self.raw_dir)
             os.rename(osp.join(self.root, self.file_name), self.raw_dir)
             shutil.copy(self.path_file, self.raw_dir)
-            cmd = "patch -ruN -p0 -d  {} < {}".format(self.raw_dir, osp.join(self.raw_dir, "s3dis.patch"))
+            cmd = f'patch -ruN -p0 -d  {self.raw_dir} < {osp.join(self.raw_dir, "s3dis.patch")}'
+
             os.system(cmd)
         else:
             intersection = len(set(self.folders).intersection(set(raw_folders)))
@@ -382,9 +381,8 @@ class S3DISOriginalFused(InMemoryDataset):
                     area_idx = int(area.split("_")[-1])
                     if areas[area_idx] == 5:
                         continue
-                    else:
-                        print(area_idx)
-                        areas[area_idx] += 1
+                    print(area_idx)
+                    areas[area_idx] += 1
 
                 area_num = int(area[-1]) - 1
                 if self.debug:
@@ -403,11 +401,7 @@ class S3DISOriginalFused(InMemoryDataset):
 
                     rgb_norm = rgb.float() / 255.0
                     data = Data(pos=xyz, y=semantic_labels, rgb=rgb_norm)
-                    if room_name in VALIDATION_ROOMS:
-                        data.validation_set = True
-                    else:
-                        data.validation_set = False
-
+                    data.validation_set = room_name in VALIDATION_ROOMS
                     if self.keep_instance:
                         data.instance_labels = instance_labels
 
@@ -703,7 +697,7 @@ class S3DISFusedDataset(BaseDataset):
 
         sampling_format = dataset_opt.get("sampling_format", "sphere")
         dataset_cls = S3DISCylinder if sampling_format == "cylinder" \
-            else S3DISSphere
+                else S3DISSphere
         sample_per_epoch = dataset_opt.get('sample_per_epoch', 3000)
         radius = dataset_opt.get('radius', 2)
         train_sample_res = dataset_opt.get('train_sample_res', radius / 10)
@@ -716,9 +710,11 @@ class S3DISFusedDataset(BaseDataset):
             radius=radius,
             sample_res=train_sample_res,
             test_area=self.dataset_opt.fold,
-            split="train" if not train_is_trainval else "trainval",
+            split="trainval" if train_is_trainval else "train",
             pre_collate_transform=self.pre_collate_transform,
-            transform=self.train_transform)
+            transform=self.train_transform,
+        )
+
 
         self.val_dataset = dataset_cls(
             self._data_path,

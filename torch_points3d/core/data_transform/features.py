@@ -47,9 +47,13 @@ class Random3AxisRotation(object):
 
     def __init__(self, apply_rotation: bool = True, rot_x: float = None, rot_y: float = None, rot_z: float = None):
         self._apply_rotation = apply_rotation
-        if apply_rotation:
-            if (rot_x is None) and (rot_y is None) and (rot_z is None):
-                raise Exception("At least one rot_ should be defined")
+        if (
+            apply_rotation
+            and (rot_x is None)
+            and (rot_y is None)
+            and (rot_z is None)
+        ):
+            raise Exception("At least one rot_ should be defined")
 
         self._rot_x = np.abs(rot_x) if rot_x else 0
         self._rot_y = np.abs(rot_y) if rot_y else 0
@@ -76,9 +80,7 @@ class Random3AxisRotation(object):
         return data
 
     def __repr__(self):
-        return "{}(apply_rotation={}, rot_x={}, rot_y={}, rot_z={})".format(
-            self.__class__.__name__, self._apply_rotation, self._rot_x, self._rot_y, self._rot_z
-        )
+        return f"{self.__class__.__name__}(apply_rotation={self._apply_rotation}, rot_x={self._rot_x}, rot_y={self._rot_y}, rot_z={self._rot_z})"
 
 
 class RandomTranslation(object):
@@ -103,7 +105,7 @@ class RandomTranslation(object):
         return data
 
     def __repr__(self):
-        return "{}(delta_min={}, delta_max={})".format(self.__class__.__name__, self.delta_min, self.delta_max)
+        return f"{self.__class__.__name__}(delta_min={self.delta_min}, delta_max={self.delta_max})"
 
 
 class AddFeatsByKeys(object):
@@ -191,10 +193,11 @@ class AddFeatsByKeys(object):
         return data
 
     def __repr__(self):
-        msg = ""
-        for f, a in zip(self._feat_names, self._list_add_to_x):
-            msg += "{}={}, ".format(f, a)
-        return "{}({})".format(self.__class__.__name__, msg[:-2])
+        msg = "".join(
+            f"{f}={a}, " for f, a in zip(self._feat_names, self._list_add_to_x)
+        )
+
+        return f"{self.__class__.__name__}({msg[:-2]})"
 
 
 class AddFeatByKey(object):
@@ -225,14 +228,17 @@ class AddFeatByKey(object):
         feat = getattr(data, self._feat_name, None)
         if feat is None:
             if self._strict:
-                raise Exception("Data should contain the attribute {}".format(self._feat_name))
+                raise Exception(f"Data should contain the attribute {self._feat_name}")
             else:
                 return data
         else:
             if self._input_nc_feat:
                 feat_dim = 1 if feat.dim() == 1 else feat.shape[-1]
                 if self._input_nc_feat != feat_dim and self._strict:
-                    raise Exception("The shape of feat: {} doesn t match {}".format(feat.shape, self._input_nc_feat))
+                    raise Exception(
+                        f"The shape of feat: {feat.shape} doesn t match {self._input_nc_feat}"
+                    )
+
             x = getattr(data, "x", None)
             if x is None:
                 if self._strict and data.pos.shape[0] != feat.shape[0]:
@@ -240,19 +246,17 @@ class AddFeatByKey(object):
                 if feat.dim() == 1:
                     feat = feat.unsqueeze(-1)
                 data.x = feat
+            elif x.shape[0] == feat.shape[0]:
+                if x.dim() == 1:
+                    x = x.unsqueeze(-1)
+                if feat.dim() == 1:
+                    feat = feat.unsqueeze(-1)
+                data.x = torch.cat([x, feat], dim=-1)
             else:
-                if x.shape[0] == feat.shape[0]:
-                    if x.dim() == 1:
-                        x = x.unsqueeze(-1)
-                    if feat.dim() == 1:
-                        feat = feat.unsqueeze(-1)
-                    data.x = torch.cat([x, feat], dim=-1)
-                else:
-                    raise Exception(
-                        "The tensor x and {} can't be concatenated, x: {}, feat: {}".format(
-                            self._feat_name, x.pos.shape[0], feat.pos.shape[0]
-                        )
-                    )
+                raise Exception(
+                    f"The tensor x and {self._feat_name} can't be concatenated, x: {x.pos.shape[0]}, feat: {feat.pos.shape[0]}"
+                )
+
         return data
 
     def __call__(self, data):
@@ -263,9 +267,7 @@ class AddFeatByKey(object):
         return data
     
     def __repr__(self):
-        return "{}(add_to_x: {}, feat_name: {}, strict: {})".format(
-            self.__class__.__name__, self._add_to_x, self._feat_name, self._strict
-        )
+        return f"{self.__class__.__name__}(add_to_x: {self._add_to_x}, feat_name: {self._feat_name}, strict: {self._strict})"
 
 
 def compute_planarity(eigenvalues):
@@ -297,10 +299,7 @@ class NormalFeature(object):
             raise NotImplementedError("TODO: Implement normal computation")
 
         norm = data.norm
-        if data.x is None:
-            data.x = norm
-        else:
-            data.x = torch.cat([data.x, norm], -1)
+        data.x = norm if data.x is None else torch.cat([data.x, norm], -1)
         return data
 
 
@@ -354,7 +353,7 @@ class PCACompute(object):
         return data
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}()"
 
 
 class PCAComputePointwise(object):
@@ -408,10 +407,10 @@ class PCAComputePointwise(object):
 
     def _process(self, data: Data):
         assert getattr(data, 'pos', None) is not None, \
-            "Data must contain a 'pos' attribute."
+                "Data must contain a 'pos' attribute."
         assert not self.use_full_pos \
-               or getattr(data, 'full_pos', None) is not None, \
-            "Data must contain a 'full_pos' attribute."
+                   or getattr(data, 'full_pos', None) is not None, \
+                "Data must contain a 'full_pos' attribute."
 
         # Recover the query and search clouds
         xyz_query = data.pos
@@ -598,7 +597,7 @@ class AddOnes(object):
         return data
 
     def __repr__(self):
-        return "{}()".format(self.__class__.__name__)
+        return f"{self.__class__.__name__}()"
 
 
 class XYZFeature(object):
@@ -630,8 +629,8 @@ class XYZFeature(object):
         assert data.pos is not None
         for axis_name, id_axis in zip(self._axis_names, self._axis):
             f = data.pos[:, id_axis].clone()
-            setattr(data, "pos_{}".format(axis_name), f)
+            setattr(data, f"pos_{axis_name}", f)
         return data
 
     def __repr__(self):
-        return "{}(axis={})".format(self.__class__.__name__, self._axis_names)
+        return f"{self.__class__.__name__}(axis={self._axis_names})"

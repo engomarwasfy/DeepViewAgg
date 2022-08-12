@@ -79,8 +79,7 @@ class SparseConv3dFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(PATH_TO_CONFIG, "unet_{}.yaml".format(
-                self.num_layers))
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"unet_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features,
                                    self._kwargs)
@@ -92,10 +91,7 @@ class SparseConv3dFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(
-                PATH_TO_CONFIG,
-                "encoder_{}.yaml".format(self.num_layers),
-            )
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"encoder_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features,
                                    self._kwargs)
@@ -111,7 +107,7 @@ class BaseSparseConv3d(UnwrappedUnetBasedModel):
                  **kwargs):
         super().__init__(model_config, model_type, dataset, modules)
         self.weight_initialization()
-        default_output_nc = kwargs.get("default_output_nc", None)
+        default_output_nc = kwargs.get("default_output_nc")
         if not default_output_nc:
             default_output_nc = extract_output_nc(model_config)
 
@@ -133,8 +129,7 @@ class BaseSparseConv3d(UnwrappedUnetBasedModel):
 
     def weight_initialization(self):
         for m in self.modules():
-            if isinstance(m, sp3d.nn.Conv3d) \
-                    or isinstance(m, sp3d.nn.Conv3dTranspose):
+            if isinstance(m, (sp3d.nn.Conv3d, sp3d.nn.Conv3dTranspose)):
                 torch.nn.init.kaiming_normal_(m.kernel, mode="fan_out",
                                               nonlinearity="relu")
 
@@ -159,10 +154,7 @@ class BaseSparseConv3d(UnwrappedUnetBasedModel):
                 'modalities': data.to(self.device).modalities}
         else:
             self.input = sp3d.nn.SparseTensor(data.x, data.coords, data.batch, self.device)
-        if data.pos is not None:
-            self.xyz = data.pos
-        else:
-            self.xyz = data.coords
+        self.xyz = data.pos if data.pos is not None else data.coords
 
 class SparseConv3dEncoder(BaseSparseConv3d):
     def forward(self, data, *args, **kwargs):
@@ -241,7 +233,7 @@ class SparseConv3dUnet(BaseSparseConv3d):
 
         # Last down conv module
         data = self.down_modules[-1](data)
-        
+
         if self.is_multimodal:
             # Discard the modalities used in the down modules, only
             # pointwise features are used in subsequent modules.
@@ -257,11 +249,11 @@ class SparseConv3dUnet(BaseSparseConv3d):
         for i in range(len(self.up_modules)):
             skip = stack_down.pop(-1) if stack_down else None
             data = self.up_modules[i](data, skip)
-        
+
         # Dirty trick to have access to the last sparse tensor from 
         # outside of the model
         self.last_sparse_tensor = data
-        
+
         out = Batch(x=data.F, pos=self.xyz).to(self.device)
         if self.has_mlp_head:
             out.x = self.mlp(out.x)

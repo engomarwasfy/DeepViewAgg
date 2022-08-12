@@ -371,8 +371,7 @@ WINDOWS = {
         '2013_05_28_drive_0018_sync/0000001878_0000002099',
         '2013_05_28_drive_0018_sync/0000002269_0000002496']}
 
-SEQUENCES = {
-    k: list(set(osp.dirname(x) for x in v)) for k, v in WINDOWS.items()}
+SEQUENCES = {k: list({osp.dirname(x) for x in v}) for k, v in WINDOWS.items()}
 
 
 ########################################################################

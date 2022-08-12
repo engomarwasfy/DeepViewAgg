@@ -59,7 +59,7 @@ class MinkowskiFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(PATH_TO_CONFIG, "unet_{}.yaml".format(self.num_layers))
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"unet_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -69,7 +69,7 @@ class MinkowskiFactory(ModelFactory):
         if self._config:
             model_config = self._config
         else:
-            path_to_model = os.path.join(PATH_TO_CONFIG, "encoder_{}.yaml".format(self.num_layers),)
+            path_to_model = os.path.join(PATH_TO_CONFIG, f"encoder_{self.num_layers}.yaml")
             model_config = OmegaConf.load(path_to_model)
         ModelFactory.resolve_model(model_config, self.num_features, self._kwargs)
         modules_lib = sys.modules[__name__]
@@ -82,7 +82,7 @@ class BaseMinkowski(UnwrappedUnetBasedModel):
     def __init__(self, model_config, model_type, dataset, modules, *args, **kwargs):
         super(BaseMinkowski, self).__init__(model_config, model_type, dataset, modules)
         self.weight_initialization()
-        default_output_nc = kwargs.get("default_output_nc", None)
+        default_output_nc = kwargs.get("default_output_nc")
         if not default_output_nc:
             default_output_nc = extract_output_nc(model_config)
 

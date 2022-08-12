@@ -39,7 +39,7 @@ class BasePartialDenseConvolutionDown(BaseConvolution):
     def __init__(self, sampler, neighbour_finder, *args, **kwargs):
         super(BasePartialDenseConvolutionDown, self).__init__(sampler, neighbour_finder, *args, **kwargs)
 
-        self._index = kwargs.get("index", None)
+        self._index = kwargs.get("index")
 
     def conv(self, x, pos, x_neighbour, pos_centered_neighbour, idx_neighbour, idx_sampler):
         """ Generic down convolution for partial dense data
@@ -139,8 +139,5 @@ class FPModule_PD(BaseModule):
         if x_skip is not None:
             x = torch.cat([x, x_skip], dim=1)
 
-        if hasattr(self, "nn"):
-            batch_out.x = self.nn(x)
-        else:
-            batch_out.x = x
+        batch_out.x = self.nn(x) if hasattr(self, "nn") else x
         return batch_out

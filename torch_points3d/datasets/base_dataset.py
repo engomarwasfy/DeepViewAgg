@@ -66,9 +66,7 @@ class BaseDataset:
     def __init__(self, dataset_opt):
         self.dataset_opt = dataset_opt
 
-        # Default dataset path
-        dataset_name = dataset_opt.get("dataset_name", None)
-        if dataset_name:
+        if dataset_name := dataset_opt.get("dataset_name", None):
             self._data_path = os.path.join(dataset_opt.dataroot, dataset_name)
         else:
             class_name = self.__class__.__name__.lower().replace("dataset", "")
@@ -106,17 +104,26 @@ class BaseDataset:
         Returns:
             [type] -- [description]
         """
-        if isinstance(transform_in, Compose) or isinstance(transform_in, list):
-            if len(list_transform_class) > 0:
-                transform_out = []
-                transforms = transform_in.transforms \
+        if (
+            isinstance(transform_in, Compose)
+            and len(list_transform_class) > 0
+            or not isinstance(transform_in, Compose)
+            and isinstance(transform_in, list)
+            and len(list_transform_class) > 0
+        ):
+            transforms = transform_in.transforms \
                     if isinstance(transform_in, Compose) \
                     else transform_in
-                for t in transforms:
-                    if not isinstance(t, tuple(list_transform_class)):
-                        transform_out.append(t)
-                transform_out = Compose(transform_out)
-        else:
+            transform_out = [
+                t
+                for t in transforms
+                if not isinstance(t, tuple(list_transform_class))
+            ]
+
+            transform_out = Compose(transform_out)
+        elif not isinstance(transform_in, Compose) and not isinstance(
+            transform_in, list
+        ):
             transform_out = transform_in
         return transform_out
 
@@ -138,16 +145,18 @@ class BaseDataset:
                     transform = instantiate_transforms(
                         getattr(dataset_opt, key_name))
                 except Exception:
-                    log.exception("Error trying to create {}, {}".format(
-                        new_name, getattr(dataset_opt, key_name)))
+                    log.exception(
+                        f"Error trying to create {new_name}, {getattr(dataset_opt, key_name)}"
+                    )
+
                     continue
                 setattr(obj, new_name, transform)
 
         inference_transform = explode_transform(obj.pre_transform)
         inference_transform += explode_transform(obj.test_transform)
         obj.inference_transform = Compose(inference_transform) \
-            if len(inference_transform) > 0 \
-            else None
+                if len(inference_transform) > 0 \
+                else None
 
     def set_filter(self, dataset_opt):
         """This function create and set the pre_filter to the obj as
@@ -160,8 +169,10 @@ class BaseDataset:
                 try:
                     filt = instantiate_filters(getattr(dataset_opt, key_name))
                 except Exception:
-                    log.exception("Error trying to create {}, {}".format(
-                        new_name, getattr(dataset_opt, key_name)))
+                    log.exception(
+                        f"Error trying to create {new_name}, {getattr(dataset_opt, key_name)}"
+                    )
+
                     continue
                 setattr(self, new_name, filt)
 
@@ -177,24 +188,22 @@ class BaseDataset:
         is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
         if is_multiscale:
             if conv_type.lower() \
-                    == ConvolutionFormat.PARTIAL_DENSE.value.lower():
+                        == ConvolutionFormat.PARTIAL_DENSE.value.lower():
                 fn = MultiScaleBatch.from_data_list
             else:
                 raise NotImplementedError(
                     "MultiscaleTransform is activated and supported only for "
                     "partial_dense format")
+        elif is_dense:
+            fn = SimpleBatch.from_data_list
         else:
-            if is_dense:
-                fn = SimpleBatch.from_data_list
-            else:
-                fn = torch_geometric.data.batch.Batch.from_data_list
+            fn = torch_geometric.data.batch.Batch.from_data_list
         return partial(BaseDataset._collate_fn, collate_fn=fn,
                        pre_collate_transform=pre_collate_transform)
 
     @staticmethod
     def get_num_samples(batch, conv_type):
-        is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
-        if is_dense:
+        if is_dense := ConvolutionFormatFactory.check_is_dense_format(conv_type):
             return batch.pos.shape[0]
         else:
             return batch.batch.max() + 1
@@ -202,8 +211,7 @@ class BaseDataset:
     @staticmethod
     def get_sample(batch, key, index, conv_type):
         assert hasattr(batch, key)
-        is_dense = ConvolutionFormatFactory.check_is_dense_format(conv_type)
-        if is_dense:
+        if is_dense := ConvolutionFormatFactory.check_is_dense_format(conv_type):
             return batch[key][index]
         else:
             return batch[key][batch.batch == index]
@@ -325,20 +333,15 @@ class BaseDataset:
 
     @test_dataset.setter
     def test_dataset(self, value):
-        if isinstance(value, list):
-            self._test_dataset = value
-        else:
-            self._test_dataset = [value]
-
+        self._test_dataset = value if isinstance(value, list) else [value]
         for i, dataset in enumerate(self._test_dataset):
-            if not hasattr(dataset, "name"):
-                if self.num_test_datasets > 1:
-                    setattr(dataset, "name", "test_%i" % i)
-                else:
-                    setattr(dataset, "name", "test")
-            else:
+            if hasattr(dataset, "name"):
                 self._contains_dataset_name = True
 
+            elif self.num_test_datasets > 1:
+                setattr(dataset, "name", "test_%i" % i)
+            else:
+                setattr(dataset, "name", "test")
         # Check for uniqueness
         all_names = [d.name for d in self.test_dataset]
         if len(set(all_names)) != len(all_names):
@@ -356,10 +359,7 @@ class BaseDataset:
 
     @property
     def test_dataloaders(self):
-        if self.has_test_loaders:
-            return self._test_loaders
-        else:
-            return []
+        return self._test_loaders if self.has_test_loaders else []
 
     @property
     def _loaders(self):
@@ -378,10 +378,7 @@ class BaseDataset:
 
     @property
     def _test_datatset_names(self):
-        if self.test_dataset:
-            return [d.name for d in self.test_dataset]
-        else:
-            return []
+        return [d.name for d in self.test_dataset] if self.test_dataset else []
 
     @property
     def available_stage_names(self):
@@ -418,9 +415,7 @@ class BaseDataset:
             return dataset.has_labels
 
         sample = dataset[0]
-        if hasattr(sample, "y"):
-            return sample.y is not None
-        return False
+        return sample.y is not None if hasattr(sample, "y") else False
 
     @property  # type: ignore
     @save_used_properties
@@ -495,20 +490,19 @@ class BaseDataset:
         for dataset in all_datasets:
             if dataset is not None and dataset.name == name:
                 return dataset
-        raise ValueError("No dataset with name %s was found." % name)
+        raise ValueError(f"No dataset with name {name} was found.")
 
     def _set_composed_multiscale_transform(self, attr, transform):
         current_transform = getattr(attr.dataset, "transform", None)
         if current_transform is None:
             setattr(attr.dataset, "transform", transform)
-        else:
-            if (isinstance(current_transform, Compose)
+        elif (isinstance(current_transform, Compose)
                     and transform not in current_transform.transforms):
-                # The transform contains several transformations
-                current_transform.transforms += [transform]
-            elif current_transform != transform:
-                setattr(attr.dataset, "transform",
-                        Compose([current_transform, transform]))
+            # The transform contains several transformations
+            current_transform.transforms += [transform]
+        elif current_transform != transform:
+            setattr(attr.dataset, "transform",
+                    Compose([current_transform, transform]))
 
     def _set_multiscale_transform(self, transform):
         for _, attr in self.__dict__.items():
@@ -531,15 +525,14 @@ class BaseDataset:
         selection is going to be on the validation or test datasets.
         """
         log.info(
-            "Available stage selection datasets: {} {} {}".format(
-                COLORS.IPurple, self.available_stage_names, COLORS.END_NO_TOKEN
-            )
+            f"Available stage selection datasets: {COLORS.IPurple} {self.available_stage_names} {COLORS.END_NO_TOKEN}"
         )
+
 
         if self.num_test_datasets > 1 and not self._contains_dataset_name:
             msg = "If you want to have better trackable names for your test " \
-                  "datasets, add a "
-            msg += COLORS.IPurple + "name" + COLORS.END_NO_TOKEN
+                      "datasets, add a "
+            msg += f"{COLORS.IPurple}name{COLORS.END_NO_TOKEN}"
             msg += " attribute to them"
             log.info(msg)
 
@@ -579,7 +572,7 @@ class BaseDataset:
         elif str(class_weight_method).startswith("log"):
             weights = torch.log(1.1 + weights / weights.sum())
         else:
-            raise ValueError("Method %s not supported" % class_weight_method)
+            raise ValueError(f"Method {class_weight_method} not supported")
 
         weights /= torch.sum(weights)
         log.info(f"CLASS WEIGHT : "
@@ -593,7 +586,7 @@ class BaseDataset:
         for attr in self.__dict__:
             if "transform" in attr:
                 message += f"{COLORS.IPurple}{attr} {COLORS.END_NO_TOKEN}= " \
-                           f"{getattr(self, attr)}\n"
+                               f"{getattr(self, attr)}\n"
         for attr in self.__dict__:
             if attr.endswith("_dataset"):
                 dataset = getattr(self, attr)
@@ -609,11 +602,11 @@ class BaseDataset:
                 if attr.startswith("_"):
                     attr = attr[1:]
                 message += f"Size of {COLORS.IPurple}{attr} " \
-                           f"{COLORS.END_NO_TOKEN}= {size}\n"
+                               f"{COLORS.END_NO_TOKEN}= {size}\n"
         for key, attr in self.__dict__.items():
             if key.endswith("_sampler") and attr:
                 message += f"{COLORS.IPurple}{key} {COLORS.END_NO_TOKEN}= " \
-                           f"{attr}\n"
+                               f"{attr}\n"
         message += f"{COLORS.IPurple}Batch size ={COLORS.END_NO_TOKEN} " \
-                   f"{self.batch_size}"
+                       f"{self.batch_size}"
         return message

@@ -54,14 +54,14 @@ class TestPairKaist(BasePCRBTest):
     def download(self):
         folder = os.path.join(self.raw_dir, "test")
         if files_exist([folder]):  # pragma: no cover
-            log.warning("already downloaded {}".format("test"))
+            log.warning('already downloaded test')
             return
         else:
             makedirs(folder)
-        log.info("Download elements in the file {}...".format(folder))
+        log.info(f"Download elements in the file {folder}...")
         for name, url in self.DATASETS:
             log.info(f'Downloading sequence {name}')
-            filename = os.path.join(folder,name+".zip")
+            filename = os.path.join(folder, f"{name}.zip")
             gdown.download(url, filename, quiet=False)
             with ZipFile(filename, 'r') as zip_obj:
                 zip_obj.extractall(folder)

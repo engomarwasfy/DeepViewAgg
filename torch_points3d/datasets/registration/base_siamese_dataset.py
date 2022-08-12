@@ -49,10 +49,7 @@ class BaseSiameseDataset(BaseDataset):
                     "MultiscaleTransform is activated and supported only for partial_dense format"
                 )
         else:
-            if is_dense:
-                fn = DensePairBatch.from_data_list
-            else:
-                fn = PairBatch.from_data_list
+            fn = DensePairBatch.from_data_list if is_dense else PairBatch.from_data_list
         return partial(BaseDataset._collate_fn, collate_fn=fn, pre_collate_transform=pre_collate_transform)
 
     def get_tracker(self, wandb_log: bool, tensorboard_log: bool):
@@ -67,19 +64,18 @@ class BaseSiameseDataset(BaseDataset):
         """
         if self.is_patch:
             return PatchRegistrationTracker(self, wandb_log=wandb_log, use_tensorboard=tensorboard_log)
+        if self.is_end2end:
+            raise NotImplementedError("implement end2end tracker")
         else:
-            if self.is_end2end:
-                raise NotImplementedError("implement end2end tracker")
-            else:
-                return FragmentRegistrationTracker(
-                    num_points=self.num_points,
-                    tau_1=self.tau_1,
-                    tau_2=self.tau_2,
-                    rot_thresh=self.rot_thresh,
-                    trans_thresh=self.trans_thresh,
-                    wandb_log=wandb_log,
-                    use_tensorboard=tensorboard_log,
-                )
+            return FragmentRegistrationTracker(
+                num_points=self.num_points,
+                tau_1=self.tau_1,
+                tau_2=self.tau_2,
+                rot_thresh=self.rot_thresh,
+                trans_thresh=self.trans_thresh,
+                wandb_log=wandb_log,
+                use_tensorboard=tensorboard_log,
+            )
 
 
 class GeneralFragment(object):
@@ -159,10 +155,7 @@ class GeneralFragment(object):
             pair = tracked_matches(data_source, data_target, new_pair)
             batch.pair_ind = pair
 
-        num_pos_pairs = len(batch.pair_ind)
-        if self.num_pos_pairs < len(batch.pair_ind):
-            num_pos_pairs = self.num_pos_pairs
-
+        num_pos_pairs = min(self.num_pos_pairs, len(batch.pair_ind))
         if not self.use_fps or (float(num_pos_pairs) / len(batch.pair_ind) >= 1):
             rand_ind = torch.randperm(len(batch.pair_ind))[:num_pos_pairs]
         else:

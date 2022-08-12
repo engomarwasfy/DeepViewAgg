@@ -54,12 +54,10 @@ class BaseLinearTransformSTNkD(torch.nn.Module):
             return x_transformed
 
     def get_orthogonal_regularization_loss(self):
-        loss = torch.mean(
+        return torch.mean(
             torch.norm(
                 torch.bmm(self.trans, self.trans.transpose(2, 1))
                 - self.identity.to(self.trans.device).view(-1, self.k, self.k),
                 dim=(1, 2),
             )
         )
-
-        return loss

@@ -40,4 +40,4 @@ class ClampBatchSize:
         return datas_out
 
     def __repr__(self):
-        return "{}(num_points={})".format(self.__class__.__name__, self._num_points)
+        return f"{self.__class__.__name__}(num_points={self._num_points})"

@@ -39,18 +39,19 @@ class ImageTransform:
 
     def __call__(self, data, images):
         if isinstance(data, list):
-            assert isinstance(images, list) and len(data) == len(images), \
-                f"List(Data) items and List(SameSettingImageData) must " \
-                f"have the same lengths."
+            assert isinstance(images, list) and len(data) == len(
+                images
+            ), 'List(Data) items and List(SameSettingImageData) must have the same lengths.'
+
             out = [self.__call__(da, im) for da, im in zip(data, images)]
             data_out, images_out = [list(x) for x in zip(*out)]
         elif isinstance(images, ImageData) and not self._PROCESS_IMAGE_DATA:
             out = [self.__call__(data.clone(), im) for im in images]
             images_out = ImageData([im for _, im in out])
-            data_out = out[0][0] if len(out) > 0 else data
+            data_out = out[0][0] if out else data
         else:
             if isinstance(images, SameSettingImageData) \
-                    and self._PROCESS_IMAGE_DATA:
+                        and self._PROCESS_IMAGE_DATA:
                 images = ImageData([images])
             # data_out, images_out = self._process(data.clone(), images.clone())
             data_out, images_out = self._process(data, images)

@@ -60,10 +60,7 @@ class SiameseModelNet(SampledModelNet, GeneralFragment):
         self.min_points = min_points
         self.train = train
         self.use_fps = use_fps
-        if(self.train):
-            self.name = "train"
-        else:
-            self.name = "test"
+        self.name = "train" if self.train else "test"
 
     def get_model(self, idx):
         data = self.data.__class__()
@@ -95,12 +92,11 @@ class SiameseModelNet(SampledModelNet, GeneralFragment):
         return data_source, data_target, new_pair
 
     def __getitem__(self, idx):
-        res = self.get_fragment(idx)
-        return res
+        return self.get_fragment(idx)
 
     def get_name(self, idx):
         data = self.get_model(idx)
-        return data.y.item(), "{}_source".format(idx), "{}_target".format(idx)
+        return data.y.item(), f"{idx}_source", f"{idx}_target"
 
     def process(self):
         super().process()

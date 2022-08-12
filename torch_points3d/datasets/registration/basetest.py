@@ -78,8 +78,7 @@ class SimplePatch(torch.utils.data.Dataset):
         return len(self.list_patches)
 
     def __getitem__(self, idx):
-        data = self.list_patches[idx]
-        return data
+        return self.list_patches[idx]
 
     @property
     def num_features(self):
@@ -119,7 +118,7 @@ class Base3DMatchTest(Dataset):
     def download(self):
         folder_test = osp.join(self.raw_dir, "test")
         if files_exist([folder_test]):  # pragma: no cover
-            log.warning("already downloaded {}".format("test"))
+            log.warning('already downloaded test')
             return
         for url_raw in self.list_urls_test:
             url = url_raw.split("\n")[0]
@@ -146,14 +145,14 @@ class Base3DMatchTest(Dataset):
         makedirs(out_dir)
         ind = 0
         # table to map fragment numper with
-        self.table = dict()
+        self.table = {}
 
         for scene_path in os.listdir(osp.join(self.raw_dir, "test")):
 
             fragment_dir = osp.join(self.raw_dir, "test", scene_path)
             list_fragment_path = sorted([f for f in os.listdir(fragment_dir) if "ply" in f])
 
-            for i, f_p in enumerate(list_fragment_path):
+            for f_p in list_fragment_path:
                 fragment_path = osp.join(fragment_dir, f_p)
                 out_dir = osp.join(self.processed_dir, "test", "fragment", scene_path)
                 makedirs(out_dir)
@@ -311,8 +310,7 @@ class BasePCRBTest(Dataset, GeneralFragment):
 
     @property
     def processed_file_names(self):
-        res = [osp.join("test", "fragment"), osp.join("test", "matches")]
-        return res
+        return [osp.join("test", "fragment"), osp.join("test", "matches")]
 
     def _pre_transform_fragments(self):
         """
@@ -324,12 +322,11 @@ class BasePCRBTest(Dataset, GeneralFragment):
         makedirs(out_dir)
 
         # table to map fragment numper with
-        self.table = dict()
-        list_scene = [f for f in os.listdir(osp.join(self.raw_dir, "test"))]
+        self.table = {}
+        list_scene = list(os.listdir(osp.join(self.raw_dir, "test")))
         for scene_path in list_scene:
 
-            pose_path = osp.join(self.raw_dir, "test",
-                                 "pose_{}.csv".format(scene_path))
+            pose_path = osp.join(self.raw_dir, "test", f"pose_{scene_path}.csv")
 
             fragment_dir = osp.join(self.raw_dir, "test", scene_path)
 
@@ -337,14 +334,16 @@ class BasePCRBTest(Dataset, GeneralFragment):
             if osp.isfile(fragment_dir):
                 continue
             list_fragment_path = sorted([f for f in os.listdir(fragment_dir) if "pcd" in f])
-            for i, f_p in enumerate(list_fragment_path):
+            for f_p in list_fragment_path:
                 fragment_path = osp.join(fragment_dir, f_p)
                 out_dir = osp.join(self.processed_dir, "test", "fragment", scene_path)
                 makedirs(out_dir)
-                if(self.is_name_path_int):
-                    out_path = osp.join(out_dir, "fragment_{:06d}.pt".format(find_int(f_p)))
-                else:
-                    out_path = osp.join(out_dir, "{}.pt".format(f_p[:-4]))
+                out_path = (
+                    osp.join(out_dir, "fragment_{:06d}.pt".format(find_int(f_p)))
+                    if self.is_name_path_int
+                    else osp.join(out_dir, f"{f_p[:-4]}.pt")
+                )
+
                 pos = torch.from_numpy(BasePCRBTest.read_pcd(fragment_path)[0][:, :3]).float()
                 data = Data(pos=pos)
                 if self.pre_transform is not None:
@@ -375,13 +374,13 @@ class BasePCRBTest(Dataset, GeneralFragment):
                 continue
             path_log = osp.join(self.raw_dir, "test", scene + "_global.txt")
             list_pair = BasePCRBTest.parse_pair_files(path_log)
-            for i, pair in enumerate(list_pair):
-                if(self.is_name_path_int):
+            for pair in list_pair:
+                if self.is_name_path_int:
                     name_fragment_s = "fragment_{:06d}.pt".format(find_int(pair["source_name"]))
                     name_fragment_t = "fragment_{:06d}.pt".format(find_int(pair["target_name"]))
                 else:
-                    name_fragment_s = "{}.pt".format(pair["source_name"][:-4])
-                    name_fragment_t = "{}.pt".format(pair["target_name"][:-4])
+                    name_fragment_s = f'{pair["source_name"][:-4]}.pt'
+                    name_fragment_t = f'{pair["target_name"][:-4]}.pt'
                 path1 = osp.join(
                     self.processed_dir,
                     "test",

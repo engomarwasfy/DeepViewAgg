@@ -34,13 +34,13 @@ def asl_to_pcd(folder_name):
 
     for filename in os.listdir(folder_name):
         matched_string = pattern.match(filename)
-        full_filename = folder_name+"/"+filename
+        full_filename = f"{folder_name}/{filename}"
         if matched_string:
             points = []
             with open(full_filename) as csv_cloud:
                 csv_reader = csv.reader(csv_cloud, delimiter=',')
                 line = 0
-                out_filename = folder_name+"/"+"PointCloud"+matched_string.group(1)+".pcd"
+                out_filename = f"{folder_name}/PointCloud" + matched_string[1] + ".pcd"
                 for row in csv_reader:
                     if line != 0:
                         points.append([float(row[1]),float(row[2]),float(row[3])])
@@ -97,17 +97,17 @@ class TestPairETH(BasePCRBTest):
         folder = osp.join(self.raw_dir, "test")
         print(folder)
         if files_exist([folder]):  # pragma: no cover
-            log.warning("already downloaded {}".format("test"))
+            log.warning('already downloaded test')
             return
         else:
             makedirs(folder)
-        log.info("Download elements in the file {}...".format(folder))
+        log.info(f"Download elements in the file {folder}...")
         for name, url in self.DATASETS:
             req = requests.get(url)
-            with open(osp.join(folder, name+".zip"), "wb") as archive:
+            with open(osp.join(folder, f"{name}.zip"), "wb") as archive:
                 archive.write(req.content)
-            with ZipFile(osp.join(folder, name+".zip"), "r") as zip_obj:
-                log.info("extracting dataset {}".format(name))
+            with ZipFile(osp.join(folder, f"{name}.zip"), "r") as zip_obj:
+                log.info(f"extracting dataset {name}")
                 zip_obj.extractall(osp.join(folder, name))
                 log.info("converting to PCD")
                 asl_to_pcd(osp.join(folder, name))
@@ -116,7 +116,7 @@ class TestPairETH(BasePCRBTest):
             for file_to_remove in filelist:
                 if file_to_remove not in file_not_to_remove:
                     os.remove(file_to_remove)
-            os.remove(osp.join(folder, name+".zip"))
+            os.remove(osp.join(folder, f"{name}.zip"))
         self.download_pairs(folder)
         req = requests.get(self.link_pose)
         with open(osp.join(folder, "pose.zip"), "wb") as archive:
@@ -217,16 +217,16 @@ class TestPairETH2(Base3DMatchTest, GeneralFragment):
         folder = osp.join(self.raw_dir, "test")
         print(folder)
         if files_exist([folder]):  # pragma: no cover
-            log.warning("already downloaded {}".format("test"))
+            log.warning('already downloaded test')
             return
         else:
             makedirs(folder)
-        log.info("Download elements in the file {}...".format(folder))
+        log.info(f"Download elements in the file {folder}...")
         req = requests.get(self.url)
-        with open(osp.join(folder, self.name+".zip"), "wb") as archive:
+        with open(osp.join(folder, f"{self.name}.zip"), "wb") as archive:
             archive.write(req.content)
-        with ZipFile(osp.join(folder, self.name+".zip"), "r") as zip_obj:
-            log.info("extracting dataset {}".format(self.name))
+        with ZipFile(osp.join(folder, f"{self.name}.zip"), "r") as zip_obj:
+            log.info(f"extracting dataset {self.name}")
             zip_obj.extractall(folder)
 
 

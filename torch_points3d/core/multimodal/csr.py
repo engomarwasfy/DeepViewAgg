@@ -70,8 +70,8 @@ class CSRData(object):
         updated wrt the cumulative size of the batched values.
         """
         self.pointers = CSRData._sorted_indices_to_pointers(pointers) \
-            if dense else pointers
-        self.values = [*args] if len(args) > 0 else None
+                if dense else pointers
+        self.values = [*args] if args else None
         if is_index_value is None or is_index_value == []:
             self.is_index_value = torch.zeros(self.num_values, dtype=torch.bool)
         else:
@@ -82,30 +82,32 @@ class CSRData(object):
         # assert self.num_groups >= 1, \
         #     "pointer indices must cover at least one group."
         assert self.pointers[0] == 0, \
-            "The first pointer element must always be 0."
+                "The first pointer element must always be 0."
         assert torch.all(self.pointers[1:] - self.pointers[:-1] >= 0), \
-            "pointer indices must be increasing."
+                "pointer indices must be increasing."
 
         if self.values is not None:
             assert isinstance(self.values, list), \
-                "Values must be held in a list."
-            assert all([len(v) == self.num_items for v in self.values]), \
-                "All value objects must have the same size."
+                    "Values must be held in a list."
+            assert all(
+                len(v) == self.num_items for v in self.values
+            ), "All value objects must have the same size."
+
             assert len(self.values[0]) == self.num_items, \
-                "pointers must cover the entire range of values."
+                    "pointers must cover the entire range of values."
             for v in self.values:
                 if isinstance(v, CSRData):
                     v.debug()
 
         if self.values is not None and self.is_index_value is not None:
             assert isinstance(self.is_index_value, torch.BoolTensor), \
-                "is_index_value must be a torch.BoolTensor."
+                    "is_index_value must be a torch.BoolTensor."
             assert self.is_index_value.dtype == torch.bool, \
-                "is_index_value must be an tensor of booleans."
+                    "is_index_value must be an tensor of booleans."
             assert self.is_index_value.ndim == 1, \
-                "is_index_value must be a 1D tensor."
+                    "is_index_value must be a 1D tensor."
             assert self.is_index_value.shape[0] == self.num_values, \
-                "is_index_value size must match the number of value tensors."
+                    "is_index_value size must match the number of value tensors."
 
     def to(self, device):
         """Move the CSRData to the specified device."""
@@ -164,12 +166,14 @@ class CSRData(object):
         assert len(indices.shape) == 1, "Only 1D indices are accepted."
         assert indices.shape[0] >= 1, "At least one group index is required."
         assert CSRData._is_sorted(indices), \
-            "Indices must be sorted in increasing order."
-        pointers = torch.cat([
-            torch.LongTensor([0]).to(device),
-            torch.where(indices[1:] > indices[:-1])[0] + 1,
-            torch.LongTensor([indices.shape[0]]).to(device)])
-        return pointers
+                "Indices must be sorted in increasing order."
+        return torch.cat(
+            [
+                torch.LongTensor([0]).to(device),
+                torch.where(indices[1:] > indices[:-1])[0] + 1,
+                torch.LongTensor([indices.shape[0]]).to(device),
+            ]
+        )
 
     def reindex_groups(self, group_indices: torch.LongTensor, num_groups=None):
         """
@@ -189,10 +193,9 @@ class CSRData(object):
         provided, it is inferred from the size of group_indices. 
         """
         order = torch.argsort(group_indices)
-        csr_new = self[order].insert_empty_groups(
-            group_indices[order],
-            num_groups=num_groups)
-        return csr_new
+        return self[order].insert_empty_groups(
+            group_indices[order], num_groups=num_groups
+        )
 
     def insert_empty_groups(self, group_indices: torch.LongTensor,
                             num_groups=None):
@@ -208,9 +211,9 @@ class CSRData(object):
         provided, it is inferred from the size of group_indices.
         """
         assert self.num_groups == group_indices.shape[0], \
-            "New group indices must correspond to the existing number of groups"
+                "New group indices must correspond to the existing number of groups"
         assert CSRData._is_sorted(group_indices), \
-            "New group indices must be sorted."
+                "New group indices must be sorted."
 
         if num_groups is not None:
             num_groups = max(group_indices.max() + 1, num_groups)
@@ -348,24 +351,34 @@ class CSRBatch(CSRData):
     def from_csr_list(csr_list):
         assert isinstance(csr_list, list) and len(csr_list) > 0
         assert isinstance(csr_list[0], CSRData), \
-            "All provided items must be CSRData objects."
+                "All provided items must be CSRData objects."
         csr_type = type(csr_list[0])
-        assert all([isinstance(csr, csr_type) for csr in csr_list]), \
-            "All provided items must have the same class."
+        assert all(
+            isinstance(csr, csr_type) for csr in csr_list
+        ), "All provided items must have the same class."
+
         device = csr_list[0].device
-        assert all([csr.device == device for csr in csr_list]), \
-            "All provided items must be on the same device."
+        assert all(
+            csr.device == device for csr in csr_list
+        ), "All provided items must be on the same device."
+
         num_values = csr_list[0].num_values
-        assert all([csr.num_values == num_values for csr in csr_list]), \
-            "All provided items must have the same number of values."
+        assert all(
+            csr.num_values == num_values for csr in csr_list
+        ), "All provided items must have the same number of values."
+
         is_index_value = csr_list[0].is_index_value
         if is_index_value is not None:
-            assert all([np.array_equal(csr.is_index_value, is_index_value)
-                        for csr in csr_list]), \
-                "All provided items must have the same is_index_value."
+            assert all(
+                np.array_equal(csr.is_index_value, is_index_value)
+                for csr in csr_list
+            ), "All provided items must have the same is_index_value."
+
         else:
-            assert all([csr.is_index_value is None for csr in csr_list]), \
-                "All provided items must have the same is_index_value."
+            assert all(
+                csr.is_index_value is None for csr in csr_list
+            ), "All provided items must have the same is_index_value."
+
         # for csr in csr_list:
         #     csr.debug()
 
@@ -448,12 +461,12 @@ class CSRBatch(CSRData):
             values.append(val)
         values = [list(x) for x in zip(*values)]
 
-        csr_list = [
+        return [
             self.__csr_type__(
-                j, *v, dense=False, is_index_value=self.is_index_value)
-            for j, v in zip(pointers, values)]
-
-        return csr_list
+                j, *v, dense=False, is_index_value=self.is_index_value
+            )
+            for j, v in zip(pointers, values)
+        ]
 
     def __getitem__(self, idx):
         """
@@ -466,11 +479,13 @@ class CSRBatch(CSRData):
         original items can no longer be retrieved with to_csr_list`.
         """
         csr_batch = super(CSRBatch, self).__getitem__(idx)
-        out = self.__csr_type__(
-            csr_batch.pointers, *csr_batch.values, dense=False,
-            is_index_value=csr_batch.is_index_value)
         # out.debug()
-        return out
+        return self.__csr_type__(
+            csr_batch.pointers,
+            *csr_batch.values,
+            dense=False,
+            is_index_value=csr_batch.is_index_value
+        )
 
     def __repr__(self):
         info = [f"{key}={getattr(self, key)}"

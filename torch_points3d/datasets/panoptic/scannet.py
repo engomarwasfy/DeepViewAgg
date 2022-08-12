@@ -50,13 +50,9 @@ class ScannetPanoptic(Scannet):
         return super()._remap_labels(self.STUFFCLASSES)
 
     def process(self):
-        if self.is_test:
-            pass
         super().process()
 
     def download(self):
-        if self.is_test:
-            pass
         super().download()
 
 

@@ -165,14 +165,18 @@ class ShapeNet(InMemoryDataset):
     @property
     def processed_raw_paths(self):
         cats = "_".join([cat[:3].lower() for cat in self.categories])
-        processed_raw_paths = [os.path.join(self.processed_dir, "raw_{}_{}".format(
-            cats, s)) for s in ["train", "val", "test", "trainval"]]
-        return processed_raw_paths
+        return [
+            os.path.join(self.processed_dir, f"raw_{cats}_{s}")
+            for s in ["train", "val", "test", "trainval"]
+        ]
 
     @property
     def processed_file_names(self):
         cats = "_".join([cat[:3].lower() for cat in self.categories])
-        return [os.path.join("{}_{}.pt".format(cats, split)) for split in ["train", "val", "test", "trainval"]]
+        return [
+            os.path.join(f"{cats}_{split}.pt")
+            for split in ["train", "val", "test", "trainval"]
+        ]
 
     def download(self):
         if self.is_test:
@@ -233,9 +237,7 @@ class ShapeNet(InMemoryDataset):
             if has_pre_transform:
                 data = self.pre_transform(data)
                 data_list.append(data)
-        if not has_pre_transform:
-            return [], data_raw_list
-        return data_raw_list, data_list
+        return (data_raw_list, data_list) if has_pre_transform else ([], data_raw_list)
 
     def _save_data_list(self, datas, path_to_datas, save_bool=True):
         if save_bool:
@@ -265,7 +267,7 @@ class ShapeNet(InMemoryDataset):
                 ]  # Removing first directory.
             data_raw_list, data_list = self._process_filenames(
                 sorted(filenames))
-            if split == "train" or split == "val":
+            if split in ["train", "val"]:
                 if len(data_raw_list) > 0:
                     raw_trainval.append(data_raw_list)
                 trainval.append(data_list)
@@ -280,7 +282,7 @@ class ShapeNet(InMemoryDataset):
             raw_trainval), self.processed_raw_paths[3], save_bool=len(raw_trainval) > 0)
 
     def __repr__(self):
-        return "{}({}, categories={})".format(self.__class__.__name__, len(self), self.categories)
+        return f"{self.__class__.__name__}({len(self)}, categories={self.categories})"
 
 
 class ShapeNetDataset(BaseDataset):
@@ -344,10 +346,7 @@ class ShapeNetDataset(BaseDataset):
     @property  # type: ignore
     @save_used_properties
     def class_to_segments(self):
-        classes_to_segment = {}
-        for key in self._categories:
-            classes_to_segment[key] = ShapeNet.seg_classes[key]
-        return classes_to_segment
+        return {key: ShapeNet.seg_classes[key] for key in self._categories}
 
     @property
     def is_hierarchical(self):
